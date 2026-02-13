@@ -27,8 +27,11 @@ Address = 10.0.0.1/24
 ListenPort = 51820
 PrivateKey = {server_private_key}
 
-PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {interface} -j MASQUERADE
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o {interface} -j MASQUERADE
+PostUp = sysctl -w net.ipv4.ip_forward=1; iptables -t nat -A POSTROUTING -o {interface} -j MASQUERADE
+PostDown = iptables -t nat -D POSTROUTING -o {interface} -j MASQUERADE
+
+PostUp = ip6tables -A FORWARD -i %i -j REJECT
+PostDown = ip6tables -D FORWARD -i %i -j REJECT
 
 [Peer]
 PublicKey = {client_public_key}
@@ -83,6 +86,9 @@ pub fn setup_wireguard(session: &Session, vps_ip: &IpAddr, interface: &str) -> a
     let (client_priv, client_pub) = generate_keys();
 
     let server_config = build_server_config(&server_priv, &client_pub, interface);
+
+    run_remote_cmd(session, "sudo mkdir -p /etc/wireguard")?;
+
     upload_config(session, &server_config)?;
 
     run_remote_cmd(session, "sudo wg-quick up wg0")?;

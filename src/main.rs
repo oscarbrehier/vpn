@@ -1,13 +1,11 @@
-use clap::{Parser};
-use ssh2::{Session};
-use std::{
-    io::{Write},
-    net::{IpAddr},
-    path::{PathBuf},
-    time::Duration,
-};
+use clap::Parser;
+use ssh2::Session;
+use std::{io::Write, net::IpAddr, path::PathBuf, time::Duration};
 use tokio::{net::TcpStream, time::timeout};
-use vpn_tool::wireguard::{self};
+use vpn_tool::{
+    ssh::{harden_ssh, run_remote_cmd},
+    wireguard::{self},
+};
 
 #[derive(Parser)]
 struct Args {
@@ -18,7 +16,9 @@ struct Args {
     #[arg(short, long, default_value = "dev")]
     user: String,
     #[arg(long, default_value = "eth0")]
-    interface: String
+    interface: String,
+    #[arg(long)]
+    destroy: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -105,8 +105,18 @@ async fn main() -> anyhow::Result<()> {
     let mut session = connect_ssh(args.ip, args.user, args.key_path).await?;
     println!("SSH connection established");
 
+    if args.destroy {
+        run_remote_cmd(&session, "sudo wg-quick down wg0 || true")?;
+        run_remote_cmd(&session, "sudo rm -rf /etc/wireguard/")?;
+
+        println!("VPS iS clean");
+
+        return Ok(());
+    }
+
     wireguard::setup_wireguard(&session, &args.ip, &args.interface)?;
-    
+    harden_ssh(&session)?;
+
     println!("Setup complete");
 
     Ok(())
