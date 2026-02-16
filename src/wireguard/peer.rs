@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ssh2::Session;
 use std::fmt::{self};
-use std::net::{Ipv4Addr};
+use std::net::Ipv4Addr;
 
 use crate::wireguard::server::{build_client_config, update_wireguard_config};
 use crate::wireguard::{
@@ -43,7 +43,11 @@ impl fmt::Display for Peer {
     }
 }
 
-pub fn add_new_peer(session: &Session, server_ip: Ipv4Addr, name: String) -> anyhow::Result<String> {
+pub fn add_new_peer(
+    session: &Session,
+    server_ip: Ipv4Addr,
+    name: String,
+) -> anyhow::Result<String> {
     let mut state = get_or_create_state(session, server_ip)?;
 
     let next_ip = state.get_next_available_ip()?;
@@ -53,10 +57,9 @@ pub fn add_new_peer(session: &Session, server_ip: Ipv4Addr, name: String) -> any
     state.last_updated = Utc::now();
 
     save_state(session, &state)?;
-	update_wireguard_config(session, &state)?;
+    update_wireguard_config(session, &state)?;
 
-	let client_config = build_client_config(&priv_key, &state.server_public_key, state.server_ip);
+    let client_config = build_client_config(&priv_key, &state.server_public_key, state.server_ip, next_ip);
 
-	anyhow::Ok(client_config)
-
+    anyhow::Ok(client_config)
 }

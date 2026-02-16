@@ -32,6 +32,7 @@ fn build_server_config(
     server_private_key: &str,
     client_public_key: &str,
     interface: &str,
+    client_ip: Ipv4Addr
 ) -> String {
     format!(
         r#"[Interface]
@@ -47,16 +48,16 @@ PostDown = ip6tables -D FORWARD -i %i -j REJECT
 
 [Peer]
 PublicKey = {client_public_key}
-AllowedIPs = 10.0.0.2/32
+AllowedIPs = {client_ip}/32
         "#
     )
 }
 
-pub fn build_client_config(client_priv: &str, server_pub: &str, vps_ip: Ipv4Addr) -> String {
+pub fn build_client_config(client_priv: &str, server_pub: &str, vps_ip: Ipv4Addr, peer_ip: Ipv4Addr) -> String {
     format!(
         r#"[Interface]
 PrivateKey = {client_priv}
-Address = 10.0.0.2/24
+Address = {peer_ip}/32
 DNS = 1.1.1.1
 
 [Peer]
@@ -98,7 +99,7 @@ pub fn setup_wireguard(session: &Session, vps_ip: Ipv4Addr, interface: &str) -> 
     let mut state = VpnState::new(server_pub.clone(), vps_ip);
     state.peers.push(new_peer.clone());
 
-    let server_config = build_server_config(&server_priv, &new_peer.public_key, interface);
+    let server_config = build_server_config(&server_priv, &new_peer.public_key, interface, new_peer.ip);
 
     run_remote_cmd(session, "sudo mkdir -p /etc/wireguard && sudo chmod 700 /etc/wireguard")?;
 
@@ -110,7 +111,7 @@ pub fn setup_wireguard(session: &Session, vps_ip: Ipv4Addr, interface: &str) -> 
 
     save_state(session, &state)?;
 
-    let client_config = build_client_config(&peer_priv_key, &server_pub, vps_ip);
+    let client_config = build_client_config(&peer_priv_key, &server_pub, vps_ip, new_peer.ip);
 
     let filename = format!("conf/wg_{}.conf", vps_ip);
     std::fs::create_dir_all("conf")?;
