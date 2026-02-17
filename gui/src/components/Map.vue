@@ -213,7 +213,7 @@ watch(() => props.country, (newCountry) => {
 			}">
 				<g v-html="svgContent" class="fill-[#2b2c36] stroke-[#676a82]/20"></g>
 
-				<circle v-if="dotPos.x !== 0" :cx="dotPos.x" :cy="dotPos.y" r="10" fill="#10b981"
+				<circle v-if="dotPos.x !== 0" :cx="dotPos.x" :cy="dotPos.y" r="4" fill="#10b981"
 					class="drop-shadow-[0_0_15px_rgba(16,185,129,1)]" />
 			</g>
 		</svg>
