@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import "./assets/globals.css";
 import PowerButton from "./components/PowerButton.vue";
-
-const greetMsg = ref("");
-const name = ref("");
+import Map from "./components/Map.vue";
 
 const isConnected = ref(false);
 const isConnecting = ref(false);
@@ -21,28 +19,42 @@ async function handleToggle() {
 	isConnecting.value = false
 	isConnected.value = true
 }
+
 </script>
 
 <template>
 
-	<main class="h-screen w-screen flex flex-col items-center justify-center space-y-8 bg-[hsl(220,20%,6%)]">
+	<main class="h-screen w-screen bg-[#19272a] bg-cover bg-center">
 
-		<div class="flex flex-col items-center gap-1">
-			<div class="flex items-center gap-2">
-				<div class="h-2.5 w-2.5 rounded-full transition-colors duration-300" :class="isConnected
-					? 'bg-primary shadow-[0_0_8px_hsl(155,60%,50%)]'
-					: 'bg-muted-foreground'" aria-hidden="true" />
-				<span class="text-sm font-medium transition-colors duration-300"
-					:class="isConnected ? 'text-primary' : 'text-muted-foreground'">
-					{{ isConnected ? 'Connected' : 'Disconnected' }}
-				</span>
-			</div>
-			<span class="font-mono text-4xl font-bold tracking-tight text-foreground">
-				00:18:33
-			</span>
+		<div class="absolute h-full w-full bg-linear-to-b from-red-500/30 via-transparent to-black/10 z-10 pointer-events-none">
 		</div>
 
-		<PowerButton :is-connected="isConnected" :is-connecting="isConnecting" @toggle="handleToggle" />
+		<Map />
+
+		<!-- <div
+			class="h-full w-[35vw] bg-neutral-800/30 backdrop-blur-xl p-4 rounded-md border border-neutral-100/10 flex flex-col justify-between">
+
+			<div></div>
+
+			<div>
+
+				<div class="flex flex-col gap-2">
+
+					<input placeholder="Host/IP" class="bg-neutral-800 w-full rounded px-4 py-2 outline-none" />
+
+					<input placeholder="Username" class="bg-neutral-800 w-full rounded px-4 py-2 outline-none" />
+
+					<input placeholder="SSH Key" class="bg-neutral-800 w-full rounded px-4 py-2 outline-none" />
+
+				</div>
+
+				<button class="h-10 w-full rounded bg-[#0652DD] mt-4">
+					Configure
+				</button>
+
+			</div>
+
+		</div> -->
 
 	</main>
 

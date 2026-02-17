@@ -10,10 +10,12 @@
     "tauri": "tauri"
   },
   "dependencies": {
-<<<<<<< HEAD
+    "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "lucide-vue-next": "^0.564.0",
+    "mapbox-gl": "^3.18.1",
+    "tailwindcss": "^4.1.18",
     "vue": "^3.5.13"
   },
   "devDependencies": {
@@ -22,17 +24,5 @@
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
     "vue-tsc": "^2.1.10"
-=======
-    "vue": "^3.5.13",
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.1",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.3",
-    "vue-tsc": "^2.1.10",
-    "@tauri-apps/cli": "^2"
->>>>>>> origin/main
   }
 }
