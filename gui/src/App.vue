@@ -2,7 +2,8 @@
 import { onMounted, ref } from "vue";
 import "./assets/globals.css";
 import Map from "./components/Map.vue";
-import { Server, Settings, User, X } from "lucide-vue-next";
+import { Server, Settings as SettingsIcon, User, X } from "lucide-vue-next";
+import Settings from "./components/Settings.vue";
 
 const isConnected = ref(false);
 const isConnecting = ref(false);
@@ -56,6 +57,8 @@ onMounted(async () => {
 const openSettings = () => isSettingsOpen.value = true;
 const closeSettings = () => isSettingsOpen.value = false;
 
+const fileInputRef = ref(null);
+
 </script>
 
 <template>
@@ -69,24 +72,59 @@ const closeSettings = () => isSettingsOpen.value = false;
 		<!-- toolbar -->
 		<div class="h-20 w-auto absolute top-0 right-0 z-60 p-4">
 
-			<button
-				v-if="!isSettingsOpen"
-				@click="openSettings"
-			>
-				<Settings />
+			<button v-if="!isSettingsOpen" @click="openSettings">
+				<SettingsIcon />
 			</button>
 
-			<button
-				v-else="isSettingsOpen"
-				@click="closeSettings"
-			>
+			<button v-else="isSettingsOpen" @click="closeSettings">
 				<X />
 			</button>
 
 		</div>
 
+		<div class="absolute z-50 bottom-0 left-0 w-full p-4 flex flex-col items-center">
+
+			<button @click="handleToggle" class="h-12 rounded-md px-14 border border-neutral-500/20 mb-4"
+				:class="isConnected ? 'bg-neutral-700' : 'bg-violet-700'">
+				{{ isConnected ? "Disconnect" : "Connect" }}
+			</button>
+
+			<div class="h-auto w-full z-50  px-4 py-2 flex justify-between">
+				<!-- <div class="h-auto bg-neutral-900 w-full z-50 rounded-md border border-neutral-500/20 px-4 py-2 flex justify-between"> -->
+
+				<div>
+					<p class="text-[12px] text-neutral-400">Your IP Address</p>
+					<p class="text-sm">{{ locationData.ip || 'Detecting...' }}</p>
+				</div>
+
+				<div class="h-full w-px border border-neutral-500/20 mx-8" />
+
+				<div>
+					<p class="text-[12px] text-neutral-400">Country</p>
+					<p class="text-sm">{{ locationData.country || 'Detecting...' }}</p>
+				</div>
+
+				<div class="h-full w-px border border-neutral-500/20 mx-8" />
+
+				<div>
+					<p class="text-[12px] text-neutral-400">Provider</p>
+					<p class="text-sm">{{ locationData.isp || 'Detecting...' }}</p>
+				</div>
+
+			</div>
+
+		</div>
+
+		<!-- connection toggle -->
+		<!-- <button
+			@click="handleToggle"
+			class="bg-violet-700 z-20 absolute left-1/2 -translate-x-1/2 -translate-y-1/2"
+		>
+			
+		</button> -->
+
 		<!-- connection info -->
-		<div
+		<!-- <div
 			class="absolute h-20 w-full bottom-0 right-0 z-30 pointer-events-none flex items-center justify-between px-4">
 
 			<div>
@@ -104,97 +142,11 @@ const closeSettings = () => isSettingsOpen.value = false;
 				<p>{{ locationData.isp || 'Detecting...' }}</p>
 			</div>
 
-		</div>
+		</div> -->
 
 		<Map :lat="locationData.lat" :lon="locationData.lon" :country="locationData.country" />
 
-		<!-- <div class="absolute p-4 bottom-0">
-
-			<div
-				class="h-full w-[30vw] bg-neutral-800/30 backdrop-blur-xl p-4 rounded-md border border-neutral-100/10 flex flex-col justify-between">
-
-				<div></div>
-
-				<div>
-
-					<div class="flex flex-col space-y-4">
-
-						<div className="flex flex-col gap-1.5">
-							<label htmlFor="host"
-								className="flex items-center gap-1.5 text-[12px] font-medium text-secondary-foreground">
-								IP Address
-							</label>
-							<input id="host" placeholder="e.g. "
-								class="bg-neutral-800 w-full rounded px-4 py-2 outline-none text-sm font-mono" />
-						</div>
-
-						<div className="flex flex-col gap-1.5">
-							<label htmlFor="ssh-user"
-								className="flex items-center gap-1.5 text-[12px] font-medium text-secondary-foreground">
-								SSH Username
-							</label>
-							<input id="ssh-user" placeholder="e.g. root"
-								class="bg-neutral-800 w-full rounded px-4 py-2 outline-none text-sm font-mono" />
-						</div>
-
-					</div>
-
-					<button @click="handleToggle" class="h-10 w-full rounded bg-[#0652DD] mt-8 text-sm">
-						Connect
-					</button>
-
-				</div>
-
-			</div>
-
-		</div> -->
-
-		<div
-			v-if="isSettingsOpen"
-			class="absolute w-full h-full bg-neutral-700/40 z-50 backdrop-blur-xl p-8 flex items-center justify-center">
-
-			<!-- <h1 class="text-xl">Settings</h1> -->
-
-			<div class="w-[40vw]">
-
-				<div class="space-y-4">
-
-					<div className="flex flex-col gap-1.5">
-						<label htmlFor="host"
-							className="flex items-center gap-1.5 text-[12px] font-medium text-secondary-foreground">
-							IP Address
-						</label>
-						<input id="host" placeholder="e.g. "
-							class="bg-neutral-800/70 w-full rounded-lg px-4 py-2 outline-none text-sm font-mono" />
-					</div>
-
-					<div className="flex flex-col gap-1.5">
-						<label htmlFor="ssh-user"
-							className="flex items-center gap-1.5 text-[12px] font-medium text-secondary-foreground">
-							SSH Username
-						</label>
-						<input id="ssh-user" placeholder="e.g. root"
-							class="bg-neutral-800/70 w-full rounded-lg px-4 py-2 outline-none text-sm font-mono" />
-					</div>
-
-					<div className="flex flex-col gap-1.5">
-						<label htmlFor="ssh-key"
-							className="flex items-center gap-1.5 text-[12px] font-medium text-secondary-foreground">
-							SSH Private Key
-						</label>
-						<input id="ssh-key" placeholder="e.g. root"
-							class="bg-neutral-800/70 w-full rounded-lg px-4 py-2 outline-none text-sm font-mono" />
-					</div>
-
-				</div>
-
-				<button class="w-full bg-blue-700 rounded-lg h-10 text-sm mt-6">
-					Save configuration
-				</button>
-
-			</div>
-
-		</div>
+		<Settings :isOpen="isSettingsOpen" @close="isSettingsOpen = false" />
 
 	</main>
 
