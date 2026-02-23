@@ -46,8 +46,8 @@ Address = 10.0.0.1/24
 ListenPort = 51820
 PrivateKey = {server_private_key}
 
-PostUp = sysctl -w net.ipv4.ip_forward=1; iptables -t nat -A POSTROUTING -o {interface} -j MASQUERADE
-PostDown = iptables -t nat -D POSTROUTING -o {interface} -j MASQUERADE
+PostUp = sysctl -w net.ipv4.ip_forward=1; iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {interface} -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o {interface} -j MASQUERADE
 
 PostUp = ip6tables -A FORWARD -i %i -j REJECT
 PostDown = ip6tables -D FORWARD -i %i -j REJECT

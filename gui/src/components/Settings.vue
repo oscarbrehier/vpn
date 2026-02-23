@@ -26,39 +26,53 @@ async function selectKeyFile() {
 
 	if (selected && typeof selected === 'string') {
 		sshPath.value = selected;
-	}
+	};
 
 };
 
 async function handleSave() {
+
 	if (!hostIp.value || !sshUser.value || !sshPath.value) {
 		alert("Please fill in all fields");
 		return;
 	}
 
 	isSaving.value = true;
+
+	console.log(hostIp.value)
+	console.log(sshUser.value)
+	console.log(sshPath.value)
+
 	try {
+
 		await invoke("setup_server", {
-			server_ip: hostIp.value,
+			serverIp: hostIp.value,
 			user: sshUser.value,
-			key_file: sshPath.value
+			keyFile: sshPath.value
 		});
 
-		console.log("Config saved successfully");
-		emit('close'); // Close the modal on success
+		emit('close');
+
 	} catch (error) {
-		console.error("Failed to save config:", error);
+
 		alert(error);
+
 	} finally {
+
 		isSaving.value = false;
-	}
+
+	};
+
 }
 
 </script>
 
 <template>
+
 	<Teleport to="body">
+
 		<Transition name="fade">
+
 			<div v-if="isOpen"
 				class="fixed inset-0 w-full h-full bg-neutral-700/40 z-50 backdrop-blur-xl p-8 flex items-center justify-center">
 
@@ -108,9 +122,13 @@ async function handleSave() {
 					</button>
 
 				</div>
+
 			</div>
+
 		</Transition>
+
 	</Teleport>
+
 </template>
 
 <style scoped>

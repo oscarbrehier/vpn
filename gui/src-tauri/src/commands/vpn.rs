@@ -1,11 +1,14 @@
 use std::{net::Ipv4Addr, path::PathBuf, process::Command};
 
 use vpn_lib::{
-    self, connect_ssh, ssh::harden_ssh, validate_key_file, wireguard::server::setup_wireguard,
+    self, ssh::connect_ssh, ssh::harden_ssh, validate_key_file, wireguard::server::setup_wireguard,
 };
 
 #[tauri::command]
 pub async fn setup_server(server_ip: String, user: String, key_file: String) -> Result<(), String> {
+
+    println!("{}|{}|{}", server_ip, user, key_file);
+
     let ip: Ipv4Addr = server_ip
         .parse()
         .map_err(|_| "Invalid IP address format".to_string())?;
@@ -18,8 +21,8 @@ pub async fn setup_server(server_ip: String, user: String, key_file: String) -> 
         .await
         .map_err(|e| e.to_string())?;
 
-    setup_wireguard(&session, ip, "initial_client".into()).map_err(|e| e.to_string())?;
-    harden_ssh(&session).map_err(|e| e.to_string())?;
+    setup_wireguard(&session, ip, "eth0".into()).await.map_err(|e| e.to_string())?;
+    harden_ssh(&session).await.map_err(|e| e.to_string())?;
 
     Ok(())
 }

@@ -1,44 +1,42 @@
 use anyhow::Context;
-use async_trait::async_trait;
-use russh::*;
-use russh_keys::*;
+use russh::client::{AuthResult, Config, Handle, Handler};
+use russh::keys::ssh_key;
 use std::{net::Ipv4Addr, path::PathBuf, sync::Arc};
 
 use crate::SshError;
 
-struct ClientHandler;
+pub struct ClientHandler;
 
-#[async_trait]
-impl client::Handler for ClientHandler {
+impl Handler for ClientHandler {
     type Error = russh::Error;
 
     async fn check_server_key(
-        self,
+        &mut self,
         _server_public_key: &ssh_key::PublicKey,
-    ) -> Result<bool, Self::Error> {
-        Ok(true)
+    ) -> std::result::Result<bool, Self::Error> {
+        std::result::Result::Ok(true)
     }
 }
 
-pub type SshSession = client::Handle<ClientHandler>;
+pub type SshSession = Handle<ClientHandler>;
 
 pub async fn connect_ssh(
     addr: Ipv4Addr,
     user: String,
     key_path: PathBuf,
-) -> Result<client::Handle<ClientHandler>, SshError> {
-    let config = client::Config::default();
+) -> std::result::Result<SshSession, SshError> {
+    let config = Config::default();
     let config = Arc::new(config);
     let sh = ClientHandler;
 
-    let key_pair = load_secret_key(key_path, None)
+    let key_pair = russh::keys::load_secret_key(key_path, None)
         .map_err(|e| SshError::HandshakeFailed(format!("Failed to load key: {}", e)))?;
 
-    let mut session = client::connect::<ClientHandler, _>(config, (addr, 22), sh)
+    let mut session = russh::client::connect::<ClientHandler, _>(config, (addr, 22), sh)
         .await
         .map_err(|e| SshError::HandshakeFailed(format!("Connection failed: {}", e)))?;
 
-    let key_with_alg = PrivateKeyWithHashAlg::new(Arc::new(key_pair), None);
+    let key_with_alg = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key_pair), None);
 
     let auth_res = session
         .authenticate_publickey(user, key_with_alg)
@@ -46,11 +44,8 @@ pub async fn connect_ssh(
         .map_err(|e| SshError::HandshakeFailed(format!("Auth request failed: {}", e)))?;
 
     match auth_res {
-        russh::auth::AuthResult::Success => Ok(session),
-        russh::auth::AuthResult::FurtherMethods(_) => Err(SshError::AuthFailed(
-            "Server requires additional authentication methods".into(),
-        )),
-        _ => Err(SshError::AuthFailed("Access Denied".into())),
+        AuthResult::Success => std::result::Result::Ok(session),
+        _ => std::result::Result::Err(SshError::AuthFailed("Access denied".into())),
     }
 }
 
