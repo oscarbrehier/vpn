@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, nextTick } from 'vue';
-import { getConfigurations } from '../lib/vpn';
+import { getConfigurations, VpnConfig } from '../lib/vpn';
+import { invoke } from '@tauri-apps/api/core';
 
 const props = defineProps(['lat', 'lon', 'country']);
 
@@ -8,7 +9,7 @@ const svgContent = ref('');
 const dotPos = reactive({ x: 0, y: 0 });
 const isDragging = ref(false);
 
-const allMarkers = ref<{ x: 0, y: 0 }[]>([]);
+const allMarkers = ref<(VpnConfig & { x: 0, y: 0 })[]>([]);
 
 const SVG_W = 2000;
 const SVG_H = 857;
@@ -133,25 +134,29 @@ function flyToCountry(countryName: string, zoomLevel = 6.5) {
 
 async function placePointsOnMap() {
 
-	const vpnLocations = await getConfigurations();
+	const configs = await getConfigurations();
 
-	const mapMarkers = vpnLocations.map((loc) => {
+	const mapMarkers = configs.map((conf) => {
 
-		const coords = getCountryCenter(loc.country);
+		if (!conf.location) return ;
+
+		const coords = getCountryCenter(conf.location.country);
 
 		if (coords) {
 
 			return {
-				...loc,
+				...conf,
 				x: coords.x,
 				y: coords.y
 			}
 
-		}
+		};
+
+		return null;
 
 	});
 
-	allMarkers.value = mapMarkers;
+	allMarkers.value = mapMarkers.filter((m): m is any => m !== null);
 
 }
 
@@ -229,6 +234,22 @@ watch(() => props.country, (newCountry) => {
 
 });
 
+async function startTunnel(conf: VpnConfig) {
+
+	try {
+
+		console.log(conf)
+
+		await invoke("start_vpn_tunnel", {
+			confName: conf.file_path
+		});
+
+	} catch (err) {
+		console.error(err);
+	}	
+
+};
+
 </script>
 
 <template>
@@ -247,8 +268,8 @@ watch(() => props.country, (newCountry) => {
 				<circle v-if="dotPos.x !== 0" :cx="dotPos.x" :cy="dotPos.y" r="4" fill="#10b981"
 					class="drop-shadow-[0_0_15px_rgba(16,185,129,1)]" />
 
-				<circle v-for="p in allMarkers" :cx="p.x" :cy="p.y" r="3" fill="oklch(70.7% 0.022 261.325)"
-					class="drop-shadow-[oklch(55.1% 0.027 264.364)]"  />
+				<circle v-for="p in allMarkers" :cx="p.x" :cy="p.y" @click="startTunnel(p)" r="3" fill="oklch(70.7% 0.022 261.325)"
+					class="drop-shadow-[oklch(55.1% 0.027 264.364)]" />
 			</g>
 		</svg>
 	</div>

@@ -1,26 +1,88 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, process::Command};
+
+use anyhow::Context;
 
 pub fn list_local_configs(conf_dir: &Path) -> anyhow::Result<Vec<String>> {
+    let mut configs = Vec::new();
 
-	let mut configs = Vec::new();
+    if conf_dir.exists() && conf_dir.is_dir() {
+        for entry in fs::read_dir(conf_dir)? {
+            let entry = entry?;
+            let path = entry.path();
 
-	if conf_dir.exists() && conf_dir.is_dir() {
+            if path.extension().and_then(|s| s.to_str()) == Some("conf") {
+                if let Some(file_stem) = path.file_name().and_then(|s| s.to_str()) {
+                    configs.push(file_stem.to_string());
+                }
+            }
+        }
+    }
 
-		for entry in fs::read_dir(conf_dir)? {
+    anyhow::Ok(configs)
+}
 
-			let entry = entry?;
-			let path = entry.path();
+pub fn start_tunnel(conf_path: &Path) -> anyhow::Result<()> {
+    let path_str = conf_path
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("Invalid UTF-8 in path"))?;
 
-			if path.extension().and_then(|s| s.to_str()) == Some("conf") {
-				if let Some(file_stem) = path.file_name().and_then(|s| s.to_str()) {
-					configs.push(file_stem.to_string());
-				}
-			}
+    let clean_path = path_str.strip_prefix(r#"\\?\"#).unwrap_or(path_str);
 
-		}
+    println!("Cleaned Path for WireGuard: {}", clean_path);
 
-	}
+    println!("{}", clean_path);
 
-	anyhow::Ok(configs)
+    let (bin, args) = if cfg!(target_os = "windows") {
+        (
+            "C:\\Program Files\\WireGuard\\wireguard.exe",
+            vec!["/installtunnelservice", clean_path],
+        )
+    } else {
+        ("wg-quick", vec!["up", conf_path.to_str().unwrap()])
+    };
 
+    let output = Command::new(bin)
+        .args(&args)
+        .output()
+        .context("Failed to execute WireGuard command")?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("WireGuard error: {}", err)
+    }
+}
+
+pub fn stop_tunnel(conf_path: &Path) -> anyhow::Result<()> {
+    let interface_name = conf_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Invalid configuration path",
+            )
+        })?;
+
+    let (bin, args) = if cfg!(target_os = "windows") {
+        (
+            "C:\\Program Files\\WireGuard\\wireguard.exe",
+            vec!["/uninstalltunnelservice", interface_name],
+        )
+    } else {
+        ("wg-quick", vec!["down", interface_name])
+    };
+
+    let output = Command::new(bin)
+        .args(&args)
+        .output()
+        .context("Failed to execute WireGuard command")?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("WireGuard error: {}", err)
+    }
 }

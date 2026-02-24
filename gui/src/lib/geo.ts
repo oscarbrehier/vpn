@@ -1,3 +1,16 @@
+export interface GeoLocation {
+	status: string;
+	country: string;
+	countryCode: string;
+	regionName: string;
+	city: string;
+	lat: number;
+	lon: number;
+	timezone: string;
+	isp: string;
+	query: string;
+};
+
 export async function getGeoLocation(ip_address?: string): Promise<any | null> {
 
 	try {
