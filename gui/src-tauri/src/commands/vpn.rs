@@ -1,7 +1,7 @@
-use std::{net::Ipv4Addr, path::PathBuf, process::Command};
+use std::{net::Ipv4Addr, path::{Path, PathBuf}, process::Command};
 
 use vpn_lib::{
-    self, ssh::connect_ssh, ssh::harden_ssh, validate_key_file, wireguard::server::setup_wireguard,
+    self, ssh::{connect_ssh, harden_ssh}, validate_key_file, wireguard::{client::list_local_configs, server::setup_wireguard},
 };
 
 #[tauri::command]
@@ -58,4 +58,12 @@ pub async fn toggle_vpn(connect: bool) -> Result<bool, String> {
 	let status = cmd.status().map_err(|e| e.to_string())?;
 
     Ok(status.success())
+}
+
+#[tauri::command]
+pub async fn get_configs() -> Result<Vec<String>, String> {
+
+    let conf_dir = Path::new("conf");
+    list_local_configs(conf_dir).map_err(|e| e.to_string())
+
 }

@@ -2,12 +2,25 @@
 import { onMounted, ref } from "vue";
 import "./assets/globals.css";
 import Map from "./components/Map.vue";
-import { Server, Settings as SettingsIcon, User, X } from "lucide-vue-next";
+import { Settings as SettingsIcon, X } from "lucide-vue-next";
 import Settings from "./components/Settings.vue";
+import { invoke } from "@tauri-apps/api/core";
+import { getGeoLocation } from "./lib/geo";
 
 const isConnected = ref(false);
 const isConnecting = ref(false);
 const isSettingsOpen = ref(false);
+
+const locationData = ref({
+	ip: "",
+	city: "",
+	country: "",
+	lat: 0,
+	lon: 0,
+	isp: ""
+});
+
+const availableEndpoints = ref<any[]>([]);
 
 async function handleToggle() {
 	if (isConnected.value) {
@@ -21,37 +34,42 @@ async function handleToggle() {
 	isConnected.value = true
 };
 
-const locationData = ref({
-	ip: "",
-	city: "",
-	country: "",
-	lat: 0,
-	lon: 0,
-	isp: ""
-});
+async function getAvailableEndpoints() {
 
-async function getGeoLocation() {
+	const confs: String[] = await invoke("get_configs");
 
-	try {
+	const locationsPromises = confs.map(async (conf) => {
 
-		const res = await fetch(`http://ip-api.com/json/`);
-		const data = await res.json();
+		const lastIndex = conf.lastIndexOf('.');
+		const ip = lastIndex !== -1 ? conf.substring(0, lastIndex) : conf;
 
-		if (data.status == "success") {
-			locationData.value = {
-				ip: data.query,
-				...data
-			};
-		}
+		const res = await getGeoLocation(ip.toString());
+		return res;
 
-	} catch (err) {
+	});
 
-	}
+	const locations = await Promise.all(locationsPromises);
+	const validLocations = locations.filter(Boolean);
 
-}
+	return validLocations;
+
+};
 
 onMounted(async () => {
-	await getGeoLocation();
+
+	const data = await getGeoLocation();
+	if (data) {
+
+		locationData.value = {
+			ip: data.query,
+			...data
+		};
+
+	};
+
+	const endpoints = await getAvailableEndpoints();
+	availableEndpoints.value = endpoints;
+
 });
 
 const openSettings = () => isSettingsOpen.value = true;

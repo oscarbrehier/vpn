@@ -9,7 +9,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::vpn::setup_server,
-            commands::vpn::toggle_vpn
+            commands::vpn::toggle_vpn,
+            commands::vpn::get_configs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -39,10 +39,6 @@ async function handleSave() {
 
 	isSaving.value = true;
 
-	console.log(hostIp.value)
-	console.log(sshUser.value)
-	console.log(sshPath.value)
-
 	try {
 
 		await invoke("setup_server", {

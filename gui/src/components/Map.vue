@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, nextTick } from 'vue';
+import { getConfigurations } from '../lib/vpn';
 
 const props = defineProps(['lat', 'lon', 'country']);
 
@@ -7,8 +8,7 @@ const svgContent = ref('');
 const dotPos = reactive({ x: 0, y: 0 });
 const isDragging = ref(false);
 
-const isConnected = ref(false);
-const mapContainer = ref<HTMLElement | null>(null);
+const allMarkers = ref<{ x: 0, y: 0 }[]>([]);
 
 const SVG_W = 2000;
 const SVG_H = 857;
@@ -104,69 +104,98 @@ function resetView() {
 	transform.scale = 1;
 };
 
-async function flyToCountry(countryName: string, zoomLevel = 6.5) {
+function flyToCountry(countryName: string, zoomLevel = 6.5) {
 
-	if (!countryName || !svgContent.value) return;
-	await nextTick();
+	const coords = getCountryCenter(countryName);
+
+	if (coords) {
+
+		dotPos.x = coords.x;
+		dotPos.y = coords.y;
+
+		transform.scale = zoomLevel;
+
+		const centerX = SVG_W / 2;
+		const centerY = SVG_H / 2;
+
+		transform.x = centerX - (coords.x * zoomLevel);
+		transform.y = centerY - (coords.y * zoomLevel);
+
+		const minX = SVG_W - (SVG_W * zoomLevel);
+		const minY = SVG_H - (SVG_H * zoomLevel);
+
+		transform.x = Math.min(0, Math.max(transform.x, minX));
+		transform.y = Math.min(0, Math.max(transform.y, minY));
+
+	};
+
+};
+
+async function placePointsOnMap() {
+
+	const vpnLocations = await getConfigurations();
+
+	const mapMarkers = vpnLocations.map((loc) => {
+
+		const coords = getCountryCenter(loc.country);
+
+		if (coords) {
+
+			return {
+				...loc,
+				x: coords.x,
+				y: coords.y
+			}
+
+		}
+
+	});
+
+	allMarkers.value = mapMarkers;
+
+}
+
+function getCountryCenter(countryName: string): { x: number, y: number } | null {
+
+	if (!countryName || !svgContent.value) return null;
 
 	const nameWithUnderscore = countryName.replace(/\s+/g, '_');
-	const nameWithSpace = countryName;
 
 	const selectors = [
 		`.${nameWithUnderscore}`,
-		`[id="${nameWithSpace}"]`,
+		`[id="${countryName}"]`,
 		`[id="${nameWithUnderscore}"]`,
-		`[name="${nameWithSpace}"]`,
-		`[class*="${nameWithSpace}"]`
+		`[name="${countryName}"]`,
+		`[class*="${countryName}"]`
 	];
 
 	const elements = document.querySelectorAll(selectors.join(', '));
 
-	if (elements.length > 0) {
+	let largestArea = 0;
+	let bestCenter: { x: number, y: number } | null = null;
 
-		let largestArea = 0;
-		let bestBBox: SVGRect | null = null;
+	elements.forEach((el) => {
 
-		elements.forEach((el) => {
+		if (el instanceof SVGGraphicsElement) {
 
-			if (el instanceof SVGGraphicsElement) {
-				const bbox = el.getBBox();
+			const bbox = el.getBBox();
+			const area = bbox.width * bbox.height;
 
-				const area = bbox.width * bbox.height;
+			if (area > largestArea) {
 
-				if (area > largestArea) {
-					largestArea = area;
-					bestBBox = bbox;
+				largestArea = area;
+				bestCenter = {
+					x: bbox.x + bbox.width / 2,
+					y: bbox.y + bbox.height / 2
 				};
 
 			};
 
-		});
+		};
 
-		if (bestBBox) {
+	});
 
-			const targetX = bestBBox.x + bestBBox.width / 2;
-			const targetY = bestBBox.y + bestBBox.height / 2;
-
-			dotPos.x = targetX;
-			dotPos.y = targetY;
-
-			transform.scale = zoomLevel;
-
-			const centerX = SVG_W / 2;
-			const centerY = SVG_H / 2;
-
-			transform.x = centerX - (targetX * zoomLevel);
-			transform.y = centerY - (targetY * zoomLevel);
-
-			const minX = SVG_W - (SVG_W * zoomLevel);
-			const minY = SVG_H - (SVG_H * zoomLevel);
-
-			transform.x = Math.min(0, Math.max(transform.x, minX));
-			transform.y = Math.min(0, Math.max(transform.y, minY));
-
-		}
-	}
+	return bestCenter;
 
 };
 
@@ -183,6 +212,8 @@ onMounted(async () => {
 			flyToCountry(props.country);
 		};
 
+		await placePointsOnMap();
+
 	} catch (err) {
 		console.error("Failed to load map:", err);
 	};
@@ -195,7 +226,7 @@ watch(() => props.country, (newCountry) => {
 		console.log(newCountry);
 		flyToCountry(newCountry);
 	};
-	
+
 });
 
 </script>
@@ -215,6 +246,9 @@ watch(() => props.country, (newCountry) => {
 
 				<circle v-if="dotPos.x !== 0" :cx="dotPos.x" :cy="dotPos.y" r="4" fill="#10b981"
 					class="drop-shadow-[0_0_15px_rgba(16,185,129,1)]" />
+
+				<circle v-for="p in allMarkers" :cx="p.x" :cy="p.y" r="3" fill="oklch(70.7% 0.022 261.325)"
+					class="drop-shadow-[oklch(55.1% 0.027 264.364)]"  />
 			</g>
 		</svg>
 	</div>
