@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Upload } from "lucide-vue-next";
 import { ref } from "vue";
+import { toast } from "vue-sonner";
 
 defineProps<{ isOpen: boolean }>();
 const emit = defineEmits(['close']);
@@ -47,19 +48,18 @@ async function handleSave() {
 			keyFile: sshPath.value
 		});
 
-		emit('close');
+		closeSettings();
 
 	} catch (error) {
-
-		alert(error);
-
+		const message = error instanceof Error ? error.message : "Unknown error";
+		toast(message);
 	} finally {
-
 		isSaving.value = false;
-
 	};
 
-}
+};
+
+const closeSettings = () => emit('close');
 
 </script>
 
@@ -73,6 +73,11 @@ async function handleSave() {
 				class="fixed inset-0 w-full h-full bg-neutral-700/40 z-50 backdrop-blur-xl p-8 flex items-center justify-center">
 
 				<div class="w-[40vw]">
+
+					<div class="w-full flex justify-end mb-10">
+						<button class="text-xs font-semibold tracking-wider text-neutral-200 uppercase" @click="closeSettings">[ close
+							]</button>
+					</div>
 
 					<div class="space-y-6">
 

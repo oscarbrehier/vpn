@@ -2,23 +2,22 @@
 import { onMounted, ref, watch } from "vue";
 import "./assets/globals.css";
 import Map from "./components/Map.vue";
-import { Settings as SettingsIcon, X } from "lucide-vue-next";
 import Settings from "./components/Settings.vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getGeoLocation } from "./lib/geo";
 import { listen } from "@tauri-apps/api/event";
 import { quickConnect, stopTunnel } from "./lib/tunnel";
-import { Toaster, toast } from 'vue-sonner';
+import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css'
+import Toolbar from "./components/Toolbar.vue";
 
 
 interface TunnelPayload {
 	name: string;
 	is_active: boolean;
-}
+};
 
 const isConnected = ref(false);
-const isConnecting = ref(false);
 const isSettingsOpen = ref(false);
 const activeTunnel = ref<string | null>(null);
 const mapFocusIp = ref<string | null>(null);
@@ -114,22 +113,17 @@ const closeSettings = () => isSettingsOpen.value = false;
 
 	<main class="h-screen w-screen bg-[#19272a] bg-cover bg-center">
 
+		<Map :tunnel="mapFocusIp" :isConnected="isConnected" />
+
 		<!-- gradient -->
 		<div class="absolute h-full w-full bg-linear-to-b via-transparent to-black/10 z-20 pointer-events-none transition-colors duration-1000"
 			:class="isConnected ? 'from-emerald-500/30' : 'from-red-500/30'" />
 
-		<!-- toolbar -->
-		<div class="h-20 w-auto absolute top-0 right-0 z-60 p-4">
-
-			<button v-if="!isSettingsOpen" @click="openSettings">
-				<SettingsIcon />
-			</button>
-
-			<button v-else="isSettingsOpen" @click="closeSettings">
-				<X />
-			</button>
-
-		</div>
+		<Toolbar
+			:isOpen="isSettingsOpen"
+			v-on:open="openSettings"
+			v-on:close="closeSettings"
+		/>
 
 		<div class="absolute z-50 bottom-0 left-0 w-full p-4 flex flex-col items-center">
 
@@ -163,8 +157,6 @@ const closeSettings = () => isSettingsOpen.value = false;
 			</div>
 
 		</div>
-
-		<Map :tunnel="mapFocusIp" :isConnected="isConnected" />
 
 		<Settings :isOpen="isSettingsOpen" @close="isSettingsOpen = false" />
 

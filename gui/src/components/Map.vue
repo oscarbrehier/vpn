@@ -16,9 +16,9 @@ const SVG_W = 2000;
 const SVG_H = 857;
 
 const transform = reactive({
-	x: 0,
-	y: 0,
-	scale: 1
+	x: -2150,
+	y: -621,
+	scale: 3
 });
 
 const lastMousePos = { x: 0, y: 0 };
@@ -282,12 +282,12 @@ async function startTunnel(conf: VpnConfig) {
 				<template v-for="p in allMarkers" :key="p.file_path">
 					<circle v-if="p.name !== props.tunnel" :cx="p.x" :cy="p.y" @click="startTunnel(p)" r="3"
 						fill="oklch(70.7% 0.022 261.325)"
-						class="drop-shadow-[oklch(55.1% 0.027 264.364)] cursor-pointer hover:fill-white transition-colors" />
+						class="drop-shadow-[0_0_15px_oklch(55.1% 0.027 264.364)] cursor-pointer hover:fill-white transition-colors" />
 				</template>
 
 				<circle v-if="dotPos.x !== 0" :cx="dotPos.x" :cy="dotPos.y" r="4"
 					:fill="isConnected ? 'oklch(76.5% 0.177 163.223)' : 'oklch(50.5% 0.213 27.518)'"
-					:class="isConnected ? 'drop-shadow-[0_0_15px_rgba(16,185,129,1)]' : 'drop-shadow-[oklch(63.7% 0.237 25.331)]'" />
+					:class="isConnected ? 'drop-shadow-[0_0_15px_rgba(16,185,129,1)]' : 'drop-shadow-[0_0_15px_oklch(63.7% 0.237 25.331)]'" />
 			</g>
 		</svg>
 	</div>
