@@ -54,24 +54,15 @@ pub fn start_tunnel(conf_path: &Path) -> anyhow::Result<()> {
     }
 }
 
-pub fn stop_tunnel(conf_path: &Path) -> anyhow::Result<()> {
-    let interface_name = conf_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Invalid configuration path",
-            )
-        })?;
+pub fn stop_tunnel(conf_name: &str) -> anyhow::Result<()> {
 
     let (bin, args) = if cfg!(target_os = "windows") {
         (
             "C:\\Program Files\\WireGuard\\wireguard.exe",
-            vec!["/uninstalltunnelservice", interface_name],
+            vec!["/uninstalltunnelservice", conf_name],
         )
     } else {
-        ("wg-quick", vec!["down", interface_name])
+        ("wg-quick", vec!["down", conf_name])
     };
 
     let output = Command::new(bin)

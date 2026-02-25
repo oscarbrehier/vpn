@@ -19,11 +19,13 @@ pub struct TunnelPayload {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    dotenvy::dotenv().ok();
+
     tauri::Builder::default()
         .manage(TunnelState::default())
         .setup(|app| {
             let handle = app.handle().clone();
-            
+
             tauri::async_runtime::block_on(async {
                 sync_tunnel_state(handle.clone()).await;
             });
@@ -38,8 +40,10 @@ pub fn run() {
             commands::tunnel::toggle_vpn,
             commands::tunnel::get_configs,
             commands::tunnel::start_tunnel,
+            commands::tunnel::stop_tunnel,
             commands::tunnel::is_tunnel_active,
-            commands::state::get_current_tunnel_status
+            commands::state::get_current_tunnel_status,
+            commands::geo::get_geo_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

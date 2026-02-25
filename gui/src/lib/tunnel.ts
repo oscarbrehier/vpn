@@ -18,7 +18,7 @@ export async function getConfigurations(): Promise<VpnConfig[]> {
 
 		const res = await getGeoLocation(ip);
 
-		if (!res || res.status !== "success") return null;
+		if (!res) return null;
 
 		return {
 			name: ip,
@@ -31,4 +31,20 @@ export async function getConfigurations(): Promise<VpnConfig[]> {
 	const results = await Promise.all(locationsPromises);
 	return results.filter((item) => item !== null);
 
-}
+};
+
+export async function stopTunnel(): Promise<{ error: string | null }> {
+
+	try {
+
+		await invoke("stop_tunnel");
+		return { error: null };
+
+	} catch (err) {
+
+		const message = err instanceof Error ? err.message : "Unknown error";
+		return { error: message };
+
+	};
+
+};

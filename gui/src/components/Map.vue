@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, nextTick } from 'vue';
-import { getConfigurations, VpnConfig } from '../lib/vpn';
+import { getConfigurations, VpnConfig } from '../lib/tunnel';
 import { invoke } from '@tauri-apps/api/core';
 import { getGeoLocation } from '../lib/geo';
 
@@ -217,7 +217,7 @@ onMounted(async () => {
 		if (props.isConnected && props.tunnel) {
 
 			const res = await getGeoLocation(props.tunnel);
-			if (res && res.status == "success") {
+			if (res && res.country) {
 
 				flyToCountry(res.country);
 			}
@@ -232,18 +232,18 @@ onMounted(async () => {
 
 });
 
-watch(() => props.isConnected, async (connected) => {
+watch(() => props.tunnel, async (addr) => {
 
-	if (connected && props.tunnel && svgContent.value) {
-		
+	if (addr && svgContent.value) {
+
 		await nextTick();
 
-		const res = await getGeoLocation(props.tunnel);
+		const res = await getGeoLocation(addr);
 
-		if (res && res.status === "success") {
+		if (res && res.country) {
 			flyToCountry(res.country);
 		};
-		
+
 	};
 
 }, { immediate: true });
@@ -251,8 +251,6 @@ watch(() => props.isConnected, async (connected) => {
 async function startTunnel(conf: VpnConfig) {
 
 	try {
-
-		console.log(conf)
 
 		await invoke("start_tunnel", {
 			confName: conf.file_path
@@ -282,8 +280,11 @@ async function startTunnel(conf: VpnConfig) {
 				<circle v-if="dotPos.x !== 0" :cx="dotPos.x" :cy="dotPos.y" r="4" fill="#10b981"
 					class="drop-shadow-[0_0_15px_rgba(16,185,129,1)]" />
 
-				<circle v-for="p in allMarkers" :cx="p.x" :cy="p.y" @click="startTunnel(p)" r="3"
-					fill="oklch(70.7% 0.022 261.325)" class="drop-shadow-[oklch(55.1% 0.027 264.364)]" />
+				<template v-for="p in allMarkers" :key="p.file_path">
+					<circle v-if="p.name !== props.tunnel" :cx="p.x" :cy="p.y" @click="startTunnel(p)" r="3"
+						fill="oklch(70.7% 0.022 261.325)"
+						class="drop-shadow-[oklch(55.1% 0.027 264.364)] cursor-pointer hover:fill-white transition-colors" />
+				</template>
 			</g>
 		</svg>
 	</div>

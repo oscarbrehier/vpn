@@ -4,7 +4,7 @@ use std::{
     process::Command,
 };
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use vpn_lib::{
     self,
     ssh::{connect_ssh, harden_ssh},
@@ -12,7 +12,7 @@ use vpn_lib::{
     wireguard::{client::list_local_configs, server::setup_wireguard},
 };
 
-use crate::TunnelState;
+use crate::{TunnelPayload, TunnelState};
 
 #[tauri::command]
 pub async fn setup_server(server_ip: String, user: String, key_file: String) -> Result<(), String> {
@@ -135,15 +135,26 @@ pub async fn start_tunnel(
 
     let tunnel_name = conf_name.replace(".conf", "");
     let mut active_lock = state.active_tunnel.lock().unwrap();
-    *active_lock = Some(tunnel_name);
+    *active_lock = Some(tunnel_name.clone());
+
+    app.emit(
+        "tunnel-status",
+        TunnelPayload {
+            name: Some(tunnel_name),
+            is_active: true,
+        },
+    )
+    .unwrap();
 
     Ok(())
 }
 
 #[tauri::command]
-pub async fn stop_tunnel(app: AppHandle) -> Result<(), String> {
+pub async fn stop_tunnel(
+    app: AppHandle,
+    state: tauri::State<'_, TunnelState>,
+) -> Result<(), String> {
     let tunnel_name = {
-        let state = app.state::<TunnelState>();
         let active_lock = state.active_tunnel.lock().unwrap();
         active_lock.clone()
     };
@@ -151,6 +162,22 @@ pub async fn stop_tunnel(app: AppHandle) -> Result<(), String> {
     let Some(name) = tunnel_name else {
         return Err("No active tunnel found in state".to_string());
     };
+
+    vpn_lib::wireguard::client::stop_tunnel(&name).map_err(|e| e.to_string())?;
+
+    {
+        let mut active_lock = state.active_tunnel.lock().unwrap();
+        *active_lock = None;
+    }
+
+    app.emit(
+        "tunnel-status",
+        TunnelPayload {
+            name: None,
+            is_active: false,
+        },
+    )
+    .unwrap();
 
     Ok(())
 }

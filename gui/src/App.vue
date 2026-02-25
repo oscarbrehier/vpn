@@ -7,6 +7,7 @@ import Settings from "./components/Settings.vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getGeoLocation } from "./lib/geo";
 import { listen } from "@tauri-apps/api/event";
+import { stopTunnel } from "./lib/tunnel";
 
 interface TunnelPayload {
 	name: string;
@@ -17,25 +18,21 @@ const isConnected = ref(false);
 const isConnecting = ref(false);
 const isSettingsOpen = ref(false);
 const activeTunnel = ref<string | null>(null);
+const mapFocusIp = ref<string | null>(null);
 
 const locationData = ref({
-	city: "",
 	country: "",
-	isp: ""
+	as_name: ""
 });
 
 const availableEndpoints = ref<any[]>([]);
 
 async function handleToggle() {
-	if (isConnected.value) {
-		isConnected.value = false
-		return
+
+	if (isConnected) {
+		await stopTunnel();
 	}
 
-	isConnecting.value = true
-	await new Promise(resolve => setTimeout(resolve, 2000))
-	isConnecting.value = false
-	isConnected.value = true
 };
 
 async function getAvailableEndpoints() {
@@ -71,6 +68,7 @@ onMounted(async () => {
 	} catch (err) { }
 
 	await listen("tunnel-status", (event: { payload: TunnelPayload }) => {
+		console.log(event.payload)
 		isConnected.value = event.payload.is_active;
 		activeTunnel.value = event.payload.name;
 	});
@@ -82,19 +80,20 @@ onMounted(async () => {
 
 watch(() => isConnected.value, async (connected) => {
 
-	if (connected && activeTunnel.value) {
+	const data = await getGeoLocation();
 
-		const data = await getGeoLocation();
+	if (data) {
 
-		if (data) {
+		locationData.value = { ...data };
 
-			locationData.value = {
-				...data
-			};
-
-		};
+		if (!connected) {
+			mapFocusIp.value = data.ip;
+		} else {
+			mapFocusIp.value = activeTunnel.value;
+		}
 
 	};
+
 
 }, { immediate: true });
 
@@ -136,7 +135,7 @@ const closeSettings = () => isSettingsOpen.value = false;
 
 				<div>
 					<p class="text-[12px] text-neutral-400">Your IP Address</p>
-					<p class="text-sm">{{ activeTunnel || 'Detecting...' }}</p>
+					<p class="text-sm">{{ mapFocusIp || 'Detecting...' }}</p>
 				</div>
 
 				<div class="h-full w-px border border-neutral-500/20 mx-8" />
@@ -150,7 +149,7 @@ const closeSettings = () => isSettingsOpen.value = false;
 
 				<div>
 					<p class="text-[12px] text-neutral-400">Provider</p>
-					<p class="text-sm">{{ locationData.isp || 'Detecting...' }}</p>
+					<p class="text-sm">{{ locationData.as_name || 'Detecting...' }}</p>
 				</div>
 
 			</div>
@@ -186,7 +185,7 @@ const closeSettings = () => isSettingsOpen.value = false;
 
 		</div> -->
 
-		<Map :tunnel="activeTunnel" :isConnected="isConnected" />
+		<Map :tunnel="mapFocusIp" :isConnected="isConnected" />
 
 		<Settings :isOpen="isSettingsOpen" @close="isSettingsOpen = false" />
 

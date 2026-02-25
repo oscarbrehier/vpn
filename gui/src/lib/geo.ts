@@ -1,25 +1,23 @@
+import { invoke } from "@tauri-apps/api/core";
+
 export interface GeoLocation {
-	status: string;
+	ip: string;
+	asn: string;
+	as_name: string;
+	as_domain: string;
+	country_code: string;
 	country: string;
-	countryCode: string;
-	regionName: string;
-	city: string;
-	lat: number;
-	lon: number;
-	timezone: string;
-	isp: string;
-	query: string;
+	continent_code: string;
+	continent: string;
 };
 
 export async function getGeoLocation(ip_address?: string): Promise<GeoLocation | null> {
 
 	try {
 
-		let url = `http://ip-api.com/json`;
-		if (ip_address) url += `/${ip_address}`;
-
-		const res = await fetch(url);
-		const data = await res.json();
+		let data = await invoke<GeoLocation>("get_geo_info", {
+			ip: ip_address
+		});
 
 		return data;
 
