@@ -41,6 +41,7 @@ pub fn run() {
             commands::tunnel::get_configs,
             commands::tunnel::start_tunnel,
             commands::tunnel::stop_tunnel,
+            commands::tunnel::quick_connect,
             commands::tunnel::is_tunnel_active,
             commands::state::get_current_tunnel_status,
             commands::geo::get_geo_info

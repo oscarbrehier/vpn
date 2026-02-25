@@ -1,5 +1,7 @@
-import { invoke } from "@tauri-apps/api/core";
+import { message } from "@tauri-apps/plugin-dialog";
 import { GeoLocation, getGeoLocation } from "./geo";
+import { runCommand } from "./tauri";
+import { toast } from "vue-sonner";
 
 export interface VpnConfig {
 	name: string;
@@ -9,7 +11,9 @@ export interface VpnConfig {
 
 export async function getConfigurations(): Promise<VpnConfig[]> {
 
-	const confs: string[] = await invoke("get_configs");
+	const { data: confs, error } = await runCommand<string[]>("get_configs", true);
+
+	if (error || !confs) return [];
 
 	const locationsPromises = confs.map(async (conf) => {
 
@@ -34,17 +38,9 @@ export async function getConfigurations(): Promise<VpnConfig[]> {
 };
 
 export async function stopTunnel(): Promise<{ error: string | null }> {
+	return await runCommand("stop_tunnel", true);
+};
 
-	try {
-
-		await invoke("stop_tunnel");
-		return { error: null };
-
-	} catch (err) {
-
-		const message = err instanceof Error ? err.message : "Unknown error";
-		return { error: message };
-
-	};
-
+export async function quickConnect(): Promise<void> {
+	await runCommand("quick_connect", true);
 };

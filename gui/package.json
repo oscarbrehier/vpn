@@ -17,7 +17,8 @@
     "lucide-vue-next": "^0.564.0",
     "mapbox-gl": "^3.18.1",
     "tailwindcss": "^4.1.18",
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "vue-sonner": "^2.0.9"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

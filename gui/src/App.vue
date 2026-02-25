@@ -7,7 +7,10 @@ import Settings from "./components/Settings.vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getGeoLocation } from "./lib/geo";
 import { listen } from "@tauri-apps/api/event";
-import { stopTunnel } from "./lib/tunnel";
+import { quickConnect, stopTunnel } from "./lib/tunnel";
+import { Toaster, toast } from 'vue-sonner';
+import 'vue-sonner/style.css'
+
 
 interface TunnelPayload {
 	name: string;
@@ -29,9 +32,11 @@ const availableEndpoints = ref<any[]>([]);
 
 async function handleToggle() {
 
-	if (isConnected) {
+	if (isConnected.value) {
 		await stopTunnel();
-	}
+	} else {
+		await quickConnect();
+	};
 
 };
 
@@ -103,6 +108,10 @@ const closeSettings = () => isSettingsOpen.value = false;
 </script>
 
 <template>
+
+	<Toaster class="background-blur-xl" :toastOptions="{
+		class: 'backdrop-blur-xl !bg-[#19272a]/60 border-t border-white/20 border-x border-b border-white/5'
+	}" :closeButton="true" closeButtonPosition="top-right" position="top-left" theme="dark" richColors />
 
 	<main class="h-screen w-screen bg-[#19272a] bg-cover bg-center">
 

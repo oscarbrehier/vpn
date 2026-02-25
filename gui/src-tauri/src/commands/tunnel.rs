@@ -4,7 +4,7 @@ use std::{
     process::Command,
 };
 
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager, State};
 use vpn_lib::{
     self,
     ssh::{connect_ssh, harden_ssh},
@@ -180,4 +180,21 @@ pub async fn stop_tunnel(
     .unwrap();
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn quick_connect(app: AppHandle, state: State<'_, TunnelState>) -> Result<String, String> {
+
+    let configs = get_configs().await?;
+
+    let first_config = configs
+        .first()
+        .ok_or_else(|| "No VPN configurations found".to_string())?;
+
+    let config_name = first_config.clone();
+
+    start_tunnel(app, state, config_name.clone()).await?;
+
+    Ok(config_name)
+
 }
