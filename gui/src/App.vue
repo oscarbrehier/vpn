@@ -34,7 +34,7 @@ const networkData = ref<{ latency: null | number }>({
 
 const availableEndpoints = ref<any[]>([]);
 
-async function handleToggle() {
+async function toggleConnection() {
 
 	if (isConnected.value) {
 		await stopTunnel();
@@ -142,14 +142,35 @@ const closeSettings = () => isSettingsOpen.value = false;
 
 		<div class="absolute z-50 bottom-0 left-0 w-full p-4 flex flex-col items-center">
 
-			<!-- <button class="capitalize px-8 py-2 rounded-full bg-slate-700">
-				{{ isConnected ? "connect" : "disconnect" }}
-			</button> -->
+			<div class="flex justify-center items-center mb-8">
 
-			<div class="inline-block p-[2px] rounded-full bg-linear-to-r from-brand-400 via-zinc-700 to-zinc-600">
-				<button class="px-6 py-4 bg-background rounded-full uppercase font-semibold text-zinc-300">
+				<button @click="toggleConnection" class="py-3 px-12 capitalize font-semibold text-lg select-none" :class="isConnected ? 'bg-neutral-500 text-neutral-100' : 'bg-accent-500 text-black '">
 					{{ isConnected ? "disconnect" : "connect" }}
 				</button>
+
+			</div>
+
+			<div class="h-auto lg:w-2/3 w-full z-50 md:px-0 px-4 py-2 flex justify-between select-none">
+
+				<div>
+					<p class="text-tiny text-neutral-400">Your IP Address</p>
+					<p class="text-sm">{{ mapFocusIp || 'Detecting...' }}</p>
+				</div>
+
+				<div class="h-full w-px border border-neutral-500/20 mx-8" />
+
+				<div>
+					<p class="text-tiny text-neutral-400">Country</p>
+					<p class="text-sm">{{ locationData.country || 'Detecting...' }}</p>
+				</div>
+
+				<div class="h-full w-px border border-neutral-500/20 mx-8" />
+
+				<div>
+					<p class="text-tiny text-neutral-400">Provider</p>
+					<p class="text-sm">{{ locationData.as_name || 'Detecting...' }}</p>
+				</div>
+
 			</div>
 
 		</div>

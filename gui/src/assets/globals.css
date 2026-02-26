@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @theme {
+	
+	--text-tiny: 12px;
+
 	--color-background: hsl(var(--background));
 	--color-foreground: hsl(var(--foreground));
 
