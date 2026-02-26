@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "vpn",
-        "width": 960,
+        "width": 1160,
         "height": 600,
         "decorations": false,
         "transparent": true,
