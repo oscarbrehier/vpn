@@ -4,7 +4,7 @@ import { Minus, SettingsIcon, X } from 'lucide-vue-next';
 
 
 	defineProps<{ isOpen: boolean, onOpen: () => void; onClose: () => void; }>();
-
+	
 	const minimize = async () => await getCurrentWindow().minimize();
 	const exit = async () => await getCurrentWindow().close();
 

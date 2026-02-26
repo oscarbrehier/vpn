@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::sync::Mutex;
 use tauri_plugin_dialog;
 
-use crate::commands::state::{start_monitoring, sync_tunnel_state};
+use crate::commands::{pinger::PingHandle, state::{start_monitoring, sync_tunnel_state}};
 
 #[derive(Default)]
 pub struct TunnelState {
@@ -23,6 +23,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(TunnelState::default())
+        .manage(PingHandle(Mutex::new(None)))
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -44,7 +45,9 @@ pub fn run() {
             commands::tunnel::quick_connect,
             commands::tunnel::is_tunnel_active,
             commands::state::get_current_tunnel_status,
-            commands::geo::get_geo_info
+            commands::geo::get_geo_info,
+            commands::pinger::start_ping_loop,
+            commands::pinger::stop_ping_loop,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

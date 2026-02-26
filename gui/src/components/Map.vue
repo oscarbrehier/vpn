@@ -270,6 +270,22 @@ async function startTunnel(conf: VpnConfig) {
 		class="absolute inset-0 w-full h-full overflow-hidden bg-[#1a1b26] cursor-grab active:cursor-grabbing"
 		@mousedown="startPan" @mousemove="doPan" @mouseup="stopPan" @mouseleave="stopPan" @wheel.prevent="handleWheel">
 		<svg viewBox="0 0 2000 857" class="w-full h-full">
+
+			<defs>
+				<radialGradient id="dot-on" cx="50%" cy="30%">
+					<stop offset="0%" stop-color="#72ffe8" />
+					<stop offset="100%" stop-color="#00d4aa" />
+				</radialGradient>
+				<radialGradient id="dot-off" cx="60%" cy="30%">
+					<stop offset="0%" stop-color="#ff72c0" />
+					<stop offset="100%" stop-color="#ff006e" />
+				</radialGradient>
+				<radialGradient id="dot" cx="60%" cy="30%">
+					<stop offset="0%" stop-color="oklch(70.7% 0.022 261.325)" />
+					<stop offset="100%" stop-color="oklch(55.1% 0.027 264.364)" />
+				</radialGradient>
+			</defs>
+
 			<g :style="{
 				transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
 				transformOrigin: '0 0',
@@ -281,14 +297,16 @@ async function startTunnel(conf: VpnConfig) {
 
 				<template v-for="p in allMarkers" :key="p.file_path">
 					<circle v-if="p.name !== props.tunnel" :cx="p.x" :cy="p.y" @click="startTunnel(p)" r="3"
-						fill="oklch(70.7% 0.022 261.325)"
-						class="drop-shadow-[0_0_15px_oklch(55.1% 0.027 264.364)] cursor-pointer hover:fill-white transition-colors" />
+						fill="url(#dot)" />
 				</template>
 
+				<circle :cx="dotPos.x" :cy="dotPos.y" r="3" :fill="isConnected ? 'url(#dot-on)' : 'url(#dot-off)'" />
+				
 				<circle v-if="dotPos.x !== 0" :cx="dotPos.x" :cy="dotPos.y" r="4"
-					:fill="isConnected ? 'oklch(76.5% 0.177 163.223)' : 'oklch(50.5% 0.213 27.518)'"
+					:fill="isConnected ? 'url(#dot-on)' : 'url(#dot-off)'"
 					:class="isConnected ? 'drop-shadow-[0_0_15px_rgba(16,185,129,1)]' : 'drop-shadow-[0_0_15px_oklch(63.7% 0.237 25.331)]'" />
 			</g>
+
 		</svg>
 	</div>
 </template>

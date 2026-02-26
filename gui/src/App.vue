@@ -10,6 +10,7 @@ import { quickConnect, stopTunnel } from "./lib/tunnel";
 import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css'
 import Toolbar from "./components/Toolbar.vue";
+import { startPinging, stopPinging } from "./lib/network";
 
 
 interface TunnelPayload {
@@ -25,6 +26,10 @@ const mapFocusIp = ref<string | null>(null);
 const locationData = ref({
 	country: "",
 	as_name: ""
+});
+
+const networkData = ref<{ latency: null | number }>({
+	latency: null
 });
 
 const availableEndpoints = ref<any[]>([]);
@@ -76,6 +81,14 @@ onMounted(async () => {
 		activeTunnel.value = event.payload.name;
 	});
 
+	await listen("ping-result", (event: { payload: [string, number] }) => {
+		networkData.value.latency = event.payload[1];
+	});
+
+	await listen("ping-stopped", () => {
+		networkData.value.latency = null;
+	});
+
 	const endpoints = await getAvailableEndpoints();
 	availableEndpoints.value = endpoints;
 
@@ -97,6 +110,11 @@ watch(() => isConnected.value, async (connected) => {
 
 	};
 
+	if (connected) {
+		startPinging();
+	} else {
+		stopPinging();
+	};
 
 }, { immediate: true });
 
@@ -117,22 +135,51 @@ const closeSettings = () => isSettingsOpen.value = false;
 
 		<!-- gradient -->
 		<div class="absolute h-full w-full bg-linear-to-b via-transparent to-black/10 z-20 pointer-events-none transition-colors duration-1000"
-			:class="isConnected ? 'from-emerald-500/30' : 'from-red-500/30'" />
+			:class="isConnected ? 'from-emerald-500/30' : 'from-[#ff006e]/30'" />
 
-		<Toolbar
-			:isOpen="isSettingsOpen"
-			v-on:open="openSettings"
-			v-on:close="closeSettings"
-		/>
+		<Toolbar :isOpen="isSettingsOpen" v-on:open="openSettings" v-on:close="closeSettings" />
 
 		<div class="absolute z-50 bottom-0 left-0 w-full p-4 flex flex-col items-center">
 
-			<button @click="handleToggle" class="h-12 rounded-md px-14 border border-neutral-500/20 mb-4"
-				:class="isConnected ? 'bg-neutral-700' : 'bg-violet-700'">
-				{{ isConnected ? "Disconnect" : "Connect" }}
-			</button>
+			<!-- <button @click="handleToggle" class="py-4 rounded-full px-14 mb-8 font-medium select-none shadow-2xl flex items-center space-x-4"
+				:class="isConnected ? 'bg-neutral-700' : 'bg-linear-to-br from-pink-500 via-purple-500 to-blue-600'">
+				<span>{{ isConnected ? "Disconnect" : "Connect" }}</span>
+			</button> -->
 
-			<div class="h-auto w-full z-50  px-4 py-2 flex justify-between">
+			<!-- <button @click="handleToggle" style="box-shadow: -5px 5px 0px 0px oklch(58.5% 0.233 277.117)"
+				class="mb-8 text-base px-8 py-3 bg-black border-[3px] border-indigo-700 rounded-2xl text-white font-black transition-transform duration-[400ms] ease-[cubic-bezier(0.68,-0.55,0.265,1.55)]">
+				{{ isConnected ? "Disconnect" : "Connect" }}
+			</button> -->
+
+			<div class="mb-8">
+				<button @click="handleToggle" :class="['uiverse', { connected: isConnected }]">
+					<div class="wrapper">
+						<span>{{ isConnected ? "Disconnect" : "Connect" }}</span>
+						<div class="circle circle-12"></div>
+						<div class="circle circle-11"></div>
+						<div class="circle circle-10"></div>
+						<div class="circle circle-9"></div>
+						<div class="circle circle-8"></div>
+						<div class="circle circle-7"></div>
+						<div class="circle circle-6"></div>
+						<div class="circle circle-5"></div>
+						<div class="circle circle-4"></div>
+						<div class="circle circle-3"></div>
+						<div class="circle circle-2"></div>
+						<div class="circle circle-1"></div>
+					</div>
+				</button>
+
+			</div>
+
+			<!-- <div v-if="isConnected" class="h-auto lg:w-1/2 w-full py-2">
+				<div>
+					<p class="text-[12px] text-neutral-400">Latency</p>
+					<p class="text-sm">{{ networkData.latency ? `${networkData.latency}ms` : 'Detecting...' }}</p>
+				</div>
+			</div> -->
+
+			<div class="h-auto lg:w-1/2 w-full z-50 md:px-0 px-4 py-2 flex justify-between select-none">
 				<!-- <div class="h-auto bg-neutral-900 w-full z-50 rounded-md border border-neutral-500/20 px-4 py-2 flex justify-between"> -->
 
 				<div>
