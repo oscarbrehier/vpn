@@ -15,7 +15,7 @@ pub async fn save_key_securely(
     Ok(())
 }
 
-pub async fn load_key_securely(public_ip: Ipv4Addr) -> Result<SecretString, String> {
+pub fn load_key_securely(public_ip: Ipv4Addr) -> Result<SecretString, String> {
     let entry = keyring::Entry::new("vpn_app", &format!("priv_key_{}", public_ip))
         .map_err(|e| e.to_string())?;
 

@@ -1,9 +1,12 @@
 use std::{
+    fs,
     net::Ipv4Addr,
     path::{Path, PathBuf},
     process::Command,
+    str::FromStr,
 };
 
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
@@ -11,11 +14,18 @@ use vpn_lib::{
     self,
     ssh::{connect_ssh, harden_ssh},
     validate_key_file,
-    wireguard::{client::list_local_configs, server::setup_wireguard},
+    wireguard::{
+        client::list_local_configs,
+        server::{build_client_config, setup_wireguard},
+    },
 };
 
 use crate::{
-    TunnelPayload, TunnelState, commands::{tunnel::metadata::{TunnelMetadata, get_all_tunnels, save_metadata_to_store}, utils::save_key_securely}
+    commands::{
+        tunnel::metadata::{get_all_tunnels, save_metadata_to_store, TunnelMetadata},
+        utils::{load_key_securely, save_key_securely},
+    },
+    TunnelPayload, TunnelState,
 };
 
 #[derive(Serialize)]
@@ -54,7 +64,6 @@ pub async fn setup_server(
     save_key_securely(result.public_ip, &result.client_private_key)
         .await
         .map_err(|e| e.to_string())?;
-
 
     save_metadata_to_store(&app, metadata)?;
 
@@ -132,40 +141,50 @@ pub fn is_tunnel_active(name: String) -> bool {
 pub async fn start_tunnel(
     app: AppHandle,
     state: tauri::State<'_, TunnelState>,
-    conf_name: String,
+    public_ip: Ipv4Addr,
 ) -> Result<(), String> {
-    let mut conf_path = app
-        .path()
-        .resource_dir()
-        .map_err(|e| e.to_string())?
-        .join("conf")
-        .join(&conf_name);
+    let store = app
+        .store("tunnels.json")
+        .map_err(|e| format!("Failed to open store: {}", e))?;
 
-    if !conf_path.exists() && cfg!(debug_assertions) {
-        conf_path = app
-            .path()
-            .app_config_dir()
-            .map_err(|e| e.to_string())?
-            .parent()
-            .unwrap()
-            .join("conf")
-            .join(&conf_name);
-    }
+    let public_ip_str = public_ip.to_string();
 
-    if !conf_path.exists() {
-        return Err(format!("Configuration file not found at {:?}", conf_path));
-    }
+    let metadata_value = store
+        .get(&public_ip_str)
+        .ok_or_else(|| format!("No metadata found for {}", public_ip_str))?;
 
-    vpn_lib::wireguard::client::start_tunnel(&conf_path).map_err(|e| e.to_string())?;
+    let client_ip = Ipv4Addr::from_str(metadata_value["client_ip"].as_str().unwrap_or("10.0.0.2")).map_err(|e| e.to_string())?;
 
-    let tunnel_name = conf_name.replace(".conf", "");
+    let server_pub_key = metadata_value["server_public_key"].as_str().unwrap_or("");
+
+    let client_private_key =
+        load_key_securely(public_ip).map_err(|_| "Failed to load private key")?;
+
+    let wg_config = build_client_config(
+        client_private_key.expose_secret(),
+        server_pub_key,
+        public_ip,
+        client_ip,
+    );
+
+    let temp_dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&temp_dir).ok();
+    let temp_config_path = temp_dir.join(format!("{}.conf", public_ip_str));
+
+    fs::write(&temp_config_path, wg_config)
+        .map_err(|e| format!("Failed to write temp config: {}", e))?;
+
+    vpn_lib::wireguard::client::start_tunnel(&temp_config_path).map_err(|e| e.to_string())?;
+
+    let _ = fs::remove_file(&temp_config_path);
+
     let mut active_lock = state.active_tunnel.lock().unwrap();
-    *active_lock = Some(tunnel_name.clone());
+    *active_lock = Some(public_ip_str.clone());
 
     app.emit(
         "tunnel-status",
         TunnelPayload {
-            name: Some(tunnel_name),
+            name: Some(public_ip_str),
             is_active: true,
         },
     )
@@ -212,18 +231,16 @@ pub async fn quick_connect(
     app: AppHandle,
     state: State<'_, TunnelState>,
 ) -> Result<ConnectResponse, String> {
-    // let configs = get_configs().await?;
+    let configs = get_all_tunnels(&app)?;
 
-    // let first_config = configs
-    //     .first()
-    //     .ok_or_else(|| "No VPN configurations found".to_string())?;
+    let first_config = configs
+        .first()
+        .ok_or_else(|| "No VPN configurations found".to_string())?;
 
-    // let config_name = first_config.clone();
-
-    // start_tunnel(app, state, config_name.clone()).await?;
+    start_tunnel(app, state, first_config.public_ip.clone()).await?;
 
     Ok(ConnectResponse {
-        config_name: "hello".to_string(),
+        config_name: first_config.name.clone(),
         success: true,
     })
 }
