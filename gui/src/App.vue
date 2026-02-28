@@ -6,7 +6,7 @@ import Settings from "./components/Settings.vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getGeoLocation } from "./lib/geo";
 import { listen } from "@tauri-apps/api/event";
-import { quickConnect, stopTunnel, TunnelMetadata } from "./lib/tunnel";
+import { getTunnelStatus, quickConnect, stopTunnel, TunnelMetadata } from "./lib/tunnel";
 import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css'
 import Toolbar from "./components/Toolbar.vue";

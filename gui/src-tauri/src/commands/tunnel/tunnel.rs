@@ -61,7 +61,7 @@ pub async fn setup_server(
 
     let metadata: TunnelMetadata = result.clone().into();
 
-    save_key_securely(result.public_ip, &result.client_private_key)
+    save_key_securely(&app, result.public_ip, &result.client_private_key)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -158,7 +158,7 @@ pub async fn start_tunnel(
     let server_pub_key = metadata_value["server_public_key"].as_str().unwrap_or("");
 
     let client_private_key =
-        load_key_securely(public_ip).map_err(|_| "Failed to load private key")?;
+        load_key_securely(&app, public_ip).map_err(|e| format!("Failed to load private key: {}", e))?;
 
     let wg_config = build_client_config(
         client_private_key.expose_secret(),
@@ -167,16 +167,13 @@ pub async fn start_tunnel(
         client_ip,
     );
 
-    let temp_dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&temp_dir).ok();
-    let temp_config_path = temp_dir.join(format!("{}.conf", public_ip_str));
+    let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let config_path = app_dir.join(format!("{}.conf", public_ip_str));
 
-    fs::write(&temp_config_path, wg_config)
+    fs::write(&config_path, wg_config)
         .map_err(|e| format!("Failed to write temp config: {}", e))?;
 
-    vpn_lib::wireguard::client::start_tunnel(&temp_config_path).map_err(|e| e.to_string())?;
-
-    let _ = fs::remove_file(&temp_config_path);
+    vpn_lib::wireguard::client::start_tunnel(&config_path).map_err(|e| e.to_string())?;
 
     let mut active_lock = state.active_tunnel.lock().unwrap();
     *active_lock = Some(public_ip_str.clone());
@@ -198,20 +195,19 @@ pub async fn stop_tunnel(
     app: AppHandle,
     state: tauri::State<'_, TunnelState>,
 ) -> Result<(), String> {
-    let tunnel_name = {
-        let active_lock = state.active_tunnel.lock().unwrap();
-        active_lock.clone()
-    };
+    let mut active_lock = state.active_tunnel.lock().unwrap();
 
-    let Some(name) = tunnel_name else {
-        return Err("No active tunnel found in state".to_string());
-    };
+    if let Some(ip) = active_lock.take() {
 
-    vpn_lib::wireguard::client::stop_tunnel(&name).map_err(|e| e.to_string())?;
+        vpn_lib::wireguard::client::stop_tunnel(&ip).map_err(|e| e.to_string())?;
 
-    {
-        let mut active_lock = state.active_tunnel.lock().unwrap();
-        *active_lock = None;
+        let app_dir = app.path().app_data_dir().ok();
+        if let Some(path) = app_dir {
+            let config_path = path.join(format!("{}.conf", ip));
+            let _ = fs::remove_file(config_path);
+        }
+
+
     }
 
     app.emit(

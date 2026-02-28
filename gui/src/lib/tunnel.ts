@@ -50,3 +50,8 @@ export async function quickConnect(): Promise<boolean> {
 	return data?.success ?? false;
 
 };
+
+export async function getTunnelStatus() {
+	const { data } = await runCommand("get_current_tunnel_status", true);
+	console.log(data); 
+}
