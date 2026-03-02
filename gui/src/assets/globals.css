@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-	
-	--text-tiny: 12px;
+
+	--text-sm: 12px;
 
 	--color-background: hsl(var(--background));
 	--color-foreground: hsl(var(--foreground));
@@ -157,6 +157,40 @@
 
 @utility text-balance {
 	text-wrap: balance;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+	transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+	will-change: transform;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+	transform: translateX(-110%);
+	opacity: 0;
+	pointer-events: none;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+	transform: translateX(0);
+	opacity: 1;
+}
+
+.stagger-enter-active,
+.stagger-appear-active {
+	transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stagger-enter-from,
+.stagger-appear-from {
+	opacity: 0;
+	transform: translateY(15px) scale(0.98);
+}
+
+.stagger-move {
+	transition: transform 1s ease;
 }
 
 /* From Uiverse.io by Ashon-G */
