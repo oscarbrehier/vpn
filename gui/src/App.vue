@@ -156,6 +156,23 @@ const closeSettings = () => isSettingsOpen.value = false;
 
 const toggleServerSelection = () => serverSelection.value = !serverSelection.value;
 
+async function connectTo(conf: TunnelMetadata) {
+
+	if (isPending.value || activeTunnel.value === conf.public_ip) return ;
+
+	isPending.value = true;
+
+	try {
+
+		await startTunnel(conf);
+		serverSelection.value = false;
+
+	} finally {
+		isPending.value = false;
+	};
+
+}
+
 </script>
 
 <template>
@@ -191,7 +208,7 @@ const toggleServerSelection = () => serverSelection.value = !serverSelection.val
 				</button>
 
 				<button @click="toggleServerSelection"
-					class="size-12 capitalize font-semibold text-lg select-none flex items-center justify-center disabled:bg-neutral-500 disabled:text-neutral-800 bg-neutral-700 text-neutral-200">
+					class="size-12 capitalize font-semibold text-lg select-none flex items-center justify-center disabled:bg-neutral-500 disabled:text-neutral-800 bg-neutral-700 text-neutral-200 cursor-pointer">
 					<ServerCog />
 				</button>
 

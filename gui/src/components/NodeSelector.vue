@@ -16,6 +16,7 @@ const emit = defineEmits<{
 }>();
 
 </script>
+
 <template>
 
 	<Transition name="slide">
@@ -33,7 +34,7 @@ const emit = defineEmits<{
 							secure connection</p>
 					</div>
 
-					<button @click="toggleServerSelection" class="rounded-full bg-neutral-700 p-1.5">
+					<button @click="emit('close')" class="rounded-full bg-neutral-700 p-1.5">
 						<X class="text-neutral-100" :size="18" />
 					</button>
 
