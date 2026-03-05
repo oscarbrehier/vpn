@@ -1,3 +1,5 @@
 /target
 /temp
 /conf
+
+**/src/bin/scratch.rs

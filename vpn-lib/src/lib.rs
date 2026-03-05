@@ -1,6 +1,7 @@
 pub mod ssh;
 pub mod wireguard;
 pub mod network;
+pub mod app_filter;
 
 use std::{
     net::{IpAddr, Ipv4Addr},
