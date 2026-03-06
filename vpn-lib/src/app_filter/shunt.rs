@@ -162,10 +162,3 @@ pub async fn start_packet_redirection(
 ) -> Result<(), String> {
     // netlink
 }
-
-pub fn update_filter_rules(
-    tx: &mpsc::UnboundedSender<Vec<u32>>,
-    pids: Vec<u32>,
-) -> Result<(), String> {
-    tx.send(pids).map_err(|e| e.to_string())
-}

@@ -12,7 +12,7 @@ use tauri_plugin_store::StoreExt;
 
 use crate::commands::{
     pinger::PingHandle,
-    state::{start_monitoring, sync_tunnel_state},
+    state::{start_monitoring, sync_tunnel_state}, tunnel::RedirectionState,
 };
 
 #[derive(Default)]
@@ -36,6 +36,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(TunnelState::default())
         .manage(PingHandle(Mutex::new(None)))
+        .manage(RedirectionState::default())
         .setup(|app| {
             let data_dir = app
                 .path()

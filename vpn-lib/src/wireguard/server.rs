@@ -80,7 +80,7 @@ DNS = 1.1.1.1
 [Peer]
 PublicKey = {server_pub}
 Endpoint = {public_ip}:51820
-AllowedIPs = 0.0.0.0/0
+AllowedIPs = 0.0.0.0/24
 "#
     )
 }

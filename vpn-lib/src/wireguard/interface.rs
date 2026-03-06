@@ -1,13 +1,18 @@
-use std::net::Ipv4Addr;
+use std::{net::Ipv4Addr, thread, time::Duration};
 
 pub fn get_interface_index(virtual_ip: Ipv4Addr) -> Result<u32, String> {
+    for _ in 0..10 {
+        let interfaces = netdev::get_interfaces();
+        let found = interfaces
+            .iter()
+            .find(|i| i.ipv4.iter().any(|addr| addr.addr() == virtual_ip));
 
-	let interfaces = netdev::get_interfaces();
-	let tun_index = interfaces.iter()
-		.find(|i| i.ipv4.iter().any(|addr| addr.addr() == virtual_ip))
-		.map(|i| i.index)
-		.ok_or("WireGuard interface not found")?;
+        if let Some(iface) = found {
+            return Ok(iface.index);
+        }
 
-	Ok(tun_index)
+        thread::sleep(Duration::from_millis(500));
+    }
 
+    Err("Wireguard interface not found after timeout".into())
 }

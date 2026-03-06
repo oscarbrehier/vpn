@@ -10,24 +10,19 @@ use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
-use tokio::time::timeout;
+use tokio::{sync::mpsc, time::timeout};
 use vpn_lib::{
-    self,
-    network::ping_endpoint,
-    ssh::{connect_ssh, harden_ssh},
-    validate_key_file,
-    wireguard::{
+    self, app_filter::shunt::start_packet_redirection, network::ping_endpoint, ssh::{connect_ssh, harden_ssh}, validate_key_file, wireguard::{
         client::list_local_configs,
         server::{build_client_config, setup_wireguard},
-    },
+    }
 };
 
 use crate::{
-    commands::{
-        tunnel::metadata::{get_all_tunnels, save_metadata_to_store, TunnelMetadata},
+    TunnelPayload, TunnelState, commands::{
+        tunnel::{RedirectionState, metadata::{TunnelMetadata, get_all_tunnels, save_metadata_to_store}},
         utils::{load_key_securely, save_key_securely},
-    },
-    TunnelPayload, TunnelState,
+    }
 };
 
 #[derive(Serialize)]
@@ -144,7 +139,8 @@ pub fn is_tunnel_active(name: String) -> bool {
 #[tauri::command]
 pub async fn start_tunnel(
     app: AppHandle,
-    state: tauri::State<'_, TunnelState>,
+    tunnel_state: tauri::State<'_, TunnelState>,
+    redirection_state: tauri::State<'_, RedirectionState>,
     public_ip: Ipv4Addr,
 ) -> Result<(), String> {
     let store = app
@@ -180,8 +176,24 @@ pub async fn start_tunnel(
 
     vpn_lib::wireguard::client::start_tunnel(&config_path).map_err(|e| e.to_string())?;
 
-    let mut active_lock = state.active_tunnel.lock().unwrap();
+    let interface_i = vpn_lib::wireguard::interface::get_interface_index(client_ip)?;
+
+    println!("Got interface index: {}", interface_i);
+
+    let (tx, rx) = mpsc::unbounded_channel();
+    tokio::spawn(async move {
+        let _ = start_packet_redirection(Vec::new(), rx, client_ip, interface_i).await;
+    });
+
+    let mut filter_guard = redirection_state.filter_rx.lock().await;
+    *filter_guard = Some(tx);
+
+    println!("applied filter guard to state");
+
+    let mut active_lock = tunnel_state.active_tunnel.lock().unwrap();
     *active_lock = Some(public_ip_str.clone());
+
+    println!("applied new state to activity lock");
 
     app.emit(
         "tunnel-status",
@@ -227,7 +239,8 @@ pub async fn stop_tunnel(
 #[tauri::command]
 pub async fn quick_connect(
     app: AppHandle,
-    state: State<'_, TunnelState>,
+    tunnel_state: State<'_, TunnelState>,
+    redirection_state: State<'_, RedirectionState>
 ) -> Result<ConnectResponse, String> {
     let configs = get_all_tunnels(&app)?;
 
@@ -238,7 +251,7 @@ pub async fn quick_connect(
     .await
     .map_err(|_| "Server selection timed out".to_string())??;
 
-    start_tunnel(app, state, best_node.public_ip).await?;
+    start_tunnel(app, tunnel_state, redirection_state, best_node.public_ip).await?;
 
     Ok(ConnectResponse {
         config_name: best_node.name.clone(),
