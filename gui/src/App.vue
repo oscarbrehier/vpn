@@ -10,8 +10,11 @@ import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css'
 import Toolbar from "./components/Toolbar.vue";
 import { startPinging, stopPinging } from "./lib/network";
-import { Loader2, ServerCog } from "lucide-vue-next";
+import { Globe, LayoutGrid, Loader2, MoveUp, ServerCog, Split, X, Zap } from "lucide-vue-next";
 import NodeSelector from "./components/NodeSelector.vue";
+import TunnelModeToggle from "./components/TunnelModeToggle.vue";
+import { getRunningApps } from "./lib/apps";
+import AppSelector from "./components/AppSelector.vue";
 
 interface TunnelPayload {
 	name: string;
@@ -169,7 +172,7 @@ async function connectTo(conf: TunnelMetadata) {
 };
 
 async function refreshEndpoints() {
-	
+
 	const endpoints = await getAvailableEndpoints();
 	availableEndpoints.value = endpoints;
 
@@ -195,6 +198,11 @@ async function refreshEndpoints() {
 
 			<div class="flex justify-center items-center mb-8 space-x-2">
 
+				<button @click="toggleServerSelection"
+					class="size-12 capitalize font-semibold text-lg select-none flex items-center justify-center disabled:bg-neutral-500 disabled:text-neutral-800 bg-neutral-700 text-neutral-200 cursor-pointer">
+					<ServerCog />
+				</button>
+
 				<button @click="toggleConnection" :disabled="isPending"
 					class="h-12 w-52 capitalize font-semibold text-lg select-none flex items-center justify-center disabled:bg-neutral-500 disabled:text-neutral-800"
 					:class="isConnected ? 'bg-neutral-500 text-neutral-100' : 'bg-accent-500 text-black'">
@@ -206,10 +214,7 @@ async function refreshEndpoints() {
 					</span>
 				</button>
 
-				<button @click="toggleServerSelection"
-					class="size-12 capitalize font-semibold text-lg select-none flex items-center justify-center disabled:bg-neutral-500 disabled:text-neutral-800 bg-neutral-700 text-neutral-200 cursor-pointer">
-					<ServerCog />
-				</button>
+				<TunnelModeToggle />
 
 			</div>
 
@@ -242,6 +247,8 @@ async function refreshEndpoints() {
 			</div>
 
 		</div>
+
+		<AppSelector />
 
 		<NodeSelector :isOpen="serverSelection" :endpoints="availableEndpoints" :activeTunnel="activeTunnel"
 			:isPending="isPending" @close="serverSelection = false" @connect="connectTo" @refresh="refreshEndpoints" />

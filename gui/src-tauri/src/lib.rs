@@ -1,5 +1,6 @@
 mod commands;
 
+use dashmap::DashMap;
 use serde::Serialize;
 use std::sync::Mutex;
 use tauri::{
@@ -14,6 +15,11 @@ use crate::commands::{
     pinger::PingHandle,
     state::{start_monitoring, sync_tunnel_state}, tunnel::RedirectionState,
 };
+
+#[derive(Default)]
+struct AppCache {
+    icons: DashMap<String, String>,
+}
 
 #[derive(Default)]
 pub struct TunnelState {
@@ -34,6 +40,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(AppCache::default())
         .manage(TunnelState::default())
         .manage(PingHandle(Mutex::new(None)))
         .manage(RedirectionState::default())
@@ -102,6 +109,7 @@ pub fn run() {
             commands::geo::get_geo_info,
             commands::pinger::start_ping_loop,
             commands::pinger::stop_ping_loop,
+            commands::apps::fetch_apps
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
