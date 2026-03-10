@@ -109,7 +109,9 @@ pub fn run() {
             commands::geo::get_geo_info,
             commands::pinger::start_ping_loop,
             commands::pinger::stop_ping_loop,
-            commands::apps::fetch_apps
+            commands::tunnel::apps::fetch_apps,
+            commands::tunnel::apps::update_tunneled_apps,
+            commands::tunnel::apps::get_tunneled_apps,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

@@ -3,4 +3,3 @@ pub mod pinger;
 pub mod state;
 pub mod tunnel;
 pub mod utils;
-pub mod apps;

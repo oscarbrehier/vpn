@@ -1,6 +1,8 @@
 import { GeoLocation, getGeoLocation } from "./geo";
 import { runCommand } from "./tauri";
 
+export type TunnelMode = "full" | "split" 
+
 export interface TunnelStatus {
 	name: string | null;
 	is_active: boolean;

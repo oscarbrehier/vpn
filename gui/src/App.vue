@@ -5,16 +5,16 @@ import Map from "./components/Map.vue";
 import { invoke } from "@tauri-apps/api/core";
 import { GeoLocation, getGeoLocation } from "./lib/geo";
 import { listen } from "@tauri-apps/api/event";
-import { getTunnelStatus, quickConnect, startTunnel, stopTunnel, TunnelMetadata } from "./lib/tunnel";
+import { getTunnelStatus, quickConnect, startTunnel, stopTunnel, TunnelMetadata, TunnelMode } from "./lib/tunnel";
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css'
 import Toolbar from "./components/Toolbar.vue";
 import { startPinging, stopPinging } from "./lib/network";
-import { Globe, LayoutGrid, Loader2, MoveUp, ServerCog, Split, X, Zap } from "lucide-vue-next";
+import { Loader2, ServerCog } from "lucide-vue-next";
 import NodeSelector from "./components/NodeSelector.vue";
 import TunnelModeToggle from "./components/TunnelModeToggle.vue";
-import { getRunningApps } from "./lib/apps";
-import AppSelector from "./components/AppSelector.vue";
+import AppRouting from "./components/app_routing/AppRouting.vue";
+import SidePanel from "./components/SidePanel.vue";
 
 interface TunnelPayload {
 	name: string;
@@ -44,6 +44,16 @@ const networkData = ref<{ latency: null | number }>({
 });
 
 const availableEndpoints = ref<UnifiedEndpoint[]>([]);
+
+const appRouting = ref();
+
+const activePanel = ref<"nodeSelector" | "appRouting" | null>(null);
+
+const tunnelMode = ref<TunnelMode>("full");
+
+const setTunnelMode = (newMode: TunnelMode) => {
+	tunnelMode.value = newMode;
+};
 
 async function toggleConnection() {
 
@@ -178,6 +188,10 @@ async function refreshEndpoints() {
 
 };
 
+function toggleAppRoutingPanel() {
+	activePanel.value = activePanel.value === "appRouting" ? null : "appRouting";
+};
+
 </script>
 
 <template>
@@ -214,7 +228,7 @@ async function refreshEndpoints() {
 					</span>
 				</button>
 
-				<TunnelModeToggle />
+				<TunnelModeToggle :mode="tunnelMode" @set-mode="setTunnelMode" />
 
 			</div>
 
@@ -248,12 +262,15 @@ async function refreshEndpoints() {
 
 		</div>
 
-		<AppSelector />
+		<SidePanel :isOpen="activePanel === 'appRouting'" @close="toggleAppRoutingPanel" ref="appRouting"
+			title="Split Tunneling" description="Route specific app traffic through the VPN">
+			<AppRouting :mode="tunnelMode" />
+		</SidePanel>
 
 		<NodeSelector :isOpen="serverSelection" :endpoints="availableEndpoints" :activeTunnel="activeTunnel"
 			:isPending="isPending" @close="serverSelection = false" @connect="connectTo" @refresh="refreshEndpoints" />
 
-		<Toolbar />
+		<Toolbar @open-routing="toggleAppRoutingPanel" />
 
 	</main>
 

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { Split, Zap } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { TunnelMode } from '../lib/tunnel';
 
-type Mode = "full" | "split";
+defineProps<{ mode: TunnelMode }>();
 
-const mode = ref<Mode>("full");
-
-const setMode = (newMode: Mode) => {
-	mode.value = newMode;
-};
+defineEmits<{
+	(e: 'set-mode', mode: TunnelMode): void;
+}>();
 
 </script>
 <template>
@@ -19,7 +17,7 @@ const setMode = (newMode: Mode) => {
 			mode === 'full' ? 'translate-x-0 bg-brand-500' : 'translate-x-full bg-accent-500'
 		]" />
 
-		<button @click="setMode('full')"
+		<button @click="$emit('set-mode', 'full')"
 			class="group relative z-10 flex items-center justify-center transition-colors duration-300 px-8"
 			:class="mode === 'full' ? 'text-white' : 'text-neutral-400 hover:text-neutral-200'">
 			<Zap :size="20" :stroke-width="mode === 'full' ? 2.5 : 2" />
@@ -31,7 +29,7 @@ const setMode = (newMode: Mode) => {
 
 		</button>
 
-		<button @click="setMode('split')"
+		<button @click="$emit('set-mode', 'split')"
 			class="group relative z-10 flex items-center justify-center transition-colors duration-300 px-8"
 			:class="mode === 'split' ? 'text-neutral-900' : 'text-neutral-400 hover:text-neutral-200'">
 			<Split :size="20" :stroke-width="mode === 'split' ? 2.5 : 2" />
