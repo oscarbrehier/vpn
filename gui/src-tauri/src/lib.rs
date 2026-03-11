@@ -152,17 +152,7 @@ pub fn run() {
                     let tunnel_state = handle.state::<TunnelState>();
                     let redirection_state = handle.state::<RedirectionState>();
 
-                    let mode = { *tunnel_state.mode.lock().unwrap() };
-                    if mode == TunnelMode::Split {
-
-                        let mut tx_lock = redirection_state.filter_tx.lock().await;
-                        if let Some(tx) = tx_lock.take() {
-                            let _ = tx.send(Vec::new());
-                        }
-
-                    }
-
-                    let _ = commands::tunnel::stop_tunnel(handle.clone(), tunnel_state).await;
+                    let _ = commands::tunnel::stop_tunnel(handle.clone(), tunnel_state, redirection_state).await;
 
                 });
 
