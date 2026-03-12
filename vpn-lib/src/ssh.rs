@@ -22,6 +22,7 @@ pub type SshSession = Handle<ClientHandler>;
 
 pub async fn connect_ssh(
     addr: Ipv4Addr,
+    port: u16,
     user: String,
     key_path: PathBuf,
 ) -> std::result::Result<SshSession, SshError> {
@@ -32,7 +33,7 @@ pub async fn connect_ssh(
     let key_pair = russh::keys::load_secret_key(key_path, None)
         .map_err(|e| SshError::HandshakeFailed(format!("Failed to load key: {}", e)))?;
 
-    let mut session = russh::client::connect::<ClientHandler, _>(config, (addr, 22), sh)
+    let mut session = russh::client::connect::<ClientHandler, _>(config, (addr, port), sh)
         .await
         .map_err(|e| SshError::HandshakeFailed(format!("Connection failed: {}", e)))?;
 
@@ -63,6 +64,9 @@ pub async fn run_remote_cmd(session: &SshSession, cmd: &str) -> anyhow::Result<(
     while let Some(msg) = channel.wait().await {
         match msg {
             russh::ChannelMsg::Data { ref data } => {
+                output.push_str(&String::from_utf8_lossy(data));
+            }
+            russh::ChannelMsg::ExtendedData { ref data, .. } => {
                 output.push_str(&String::from_utf8_lossy(data));
             }
             russh::ChannelMsg::ExitStatus { exit_status } => {

@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { Upload, X } from 'lucide-vue-next';
 import { ref } from 'vue';
 import { toast } from 'vue-sonner';
+import { runCommand } from '../lib/tauri';
 
 
 defineProps<{ isOpen: boolean }>();
@@ -12,6 +13,7 @@ const emit = defineEmits(["close", "success"]);
 const form = ref({
 	name: "",
 	serverIp: "",
+	port: null,
 	user: "",
 	keyFile: ""
 });
@@ -46,7 +48,12 @@ async function handleSave() {
 
 	try {
 
-		await invoke("setup_server", form.value);
+		const payload = {
+			...form.value,
+			port: form.value.port ? parseInt(form.value.port) : null
+		};
+
+		await runCommand("setup_server", true, payload);
 
 		emit("success");
 		closeSettings();
@@ -73,7 +80,7 @@ const closeSettings = () => emit('close');
 			<div v-if="isOpen"
 				class="absolute top-0 left-0 z-110 flex items-center justify-center h-screen w-full bg-neutral-700/30 backdrop-blur-xs">
 
-				<div class="h-auto w-full max-w-lg bg-neutral-800 rounded-lg p-4 border">
+				<div class="h-auto w-full max-w-md bg-neutral-800 rounded-lg p-4 border">
 
 					<div class="w-full flex items-center justify-between">
 
@@ -112,12 +119,25 @@ const closeSettings = () => emit('close');
 
 						</div>
 
-						<div className="flex flex-col gap-1.5">
-							<label class="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-								IP Address
-							</label>
-							<input v-model="form.serverIp" id="host" placeholder="0.0.0.0"
-								class="bg-neutral-700 border border-white/5 w-full rounded-xl px-4 py-3 text-sm font-mono flex items-center justify-between transition-colors outline-none">
+						<div class="grid grid-cols-2 gap-4">
+
+							<div class="flex-1 flex flex-col gap-1.5">
+								<label class="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+									IP Address
+								</label>
+								<input v-model="form.serverIp" id="host" placeholder="0.0.0.0"
+									class="bg-neutral-700 border border-white/5 w-full rounded-xl px-4 py-3 text-sm font-mono flex items-center justify-between transition-colors outline-none">
+							</div>
+
+							<div class="flex flex-col gap-1.5">
+								<label class="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+									Port (Optional)
+								</label>
+								<input v-model="form.port" id="port" placeholder="22"
+									class="bg-neutral-700 border border-white/5 w-full rounded-xl px-4 py-3 text-sm font-mono flex items-center justify-between transition-colors outline-none">
+							</div>
+
+
 						</div>
 
 						<div class="flex flex-col gap-2">

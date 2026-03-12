@@ -19,7 +19,7 @@ use vpn_lib::{
     validate_key_file,
     wireguard::{
         client::list_local_configs,
-        server::{TunnelMode, build_client_config, setup_wireguard},
+        server::{build_client_config, setup_wireguard, TunnelMode},
     },
 };
 
@@ -45,6 +45,7 @@ pub async fn setup_server(
     app: AppHandle,
     name: String,
     server_ip: String,
+    port: Option<u16>,
     user: String,
     key_file: String,
 ) -> Result<(), String> {
@@ -58,11 +59,12 @@ pub async fn setup_server(
 
     validate_key_file(&key_path).map_err(|e| e.to_string())?;
 
-    let session = connect_ssh(ip, user, key_path)
+    let port = port.unwrap_or(22);
+    let session = connect_ssh(ip, port, user.clone(), key_path)
         .await
         .map_err(|e| e.to_string())?;
 
-    let result = setup_wireguard(&session, ip, "eth0".into())
+    let result = setup_wireguard(&session, ip, "eth0".into(), user)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -176,7 +178,7 @@ pub async fn start_tunnel(
         server_pub_key,
         public_ip,
         client_ip,
-        &tunnel_mode
+        &tunnel_mode,
     );
 
     let app_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -190,12 +192,13 @@ pub async fn start_tunnel(
     match tunnel_mode {
         TunnelMode::Full => {}
         TunnelMode::Split => {
-
             let (tx, rx) = mpsc::unbounded_channel();
             let wg_server_internal_ip = Ipv4Addr::new(10, 0, 0, 1);
 
             tokio::spawn(async move {
-                if let Err(e) = start_packet_redirection(Vec::new(), rx, wg_server_internal_ip).await {
+                if let Err(e) =
+                    start_packet_redirection(Vec::new(), rx, wg_server_internal_ip).await
+                {
                     eprintln!("redirection task error {}", e);
                 }
             });
@@ -218,7 +221,7 @@ pub async fn start_tunnel(
         TunnelPayload {
             name: Some(public_ip_str),
             is_active: true,
-            mode: tunnel_mode
+            mode: tunnel_mode,
         },
     )
     .unwrap();
@@ -230,9 +233,8 @@ pub async fn start_tunnel(
 pub async fn stop_tunnel(
     app: AppHandle,
     tunnel_state: tauri::State<'_, TunnelState>,
-    redirection_state: tauri::State<'_, RedirectionState>
+    redirection_state: tauri::State<'_, RedirectionState>,
 ) -> Result<(), String> {
-    
     let (mode, active_ip) = {
         let mut active_lock = tunnel_state.active_tunnel.lock().unwrap();
         let mode_lock = tunnel_state.mode.lock().unwrap();
@@ -240,7 +242,6 @@ pub async fn stop_tunnel(
     };
 
     if mode == TunnelMode::Split {
-
         let mut tx_lock = redirection_state.filter_tx.lock().await;
         if let Some(tx) = tx_lock.take() {
             let _ = tx.send(Vec::new());
@@ -248,7 +249,6 @@ pub async fn stop_tunnel(
 
         let mut pids = redirection_state.tunneled_pids.lock().await;
         pids.clear();
-
     }
 
     if let Some(ip) = active_ip {
@@ -266,7 +266,7 @@ pub async fn stop_tunnel(
         TunnelPayload {
             name: None,
             is_active: false,
-            mode  
+            mode,
         },
     )
     .unwrap();

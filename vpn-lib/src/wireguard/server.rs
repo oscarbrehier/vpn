@@ -122,13 +122,28 @@ pub async fn setup_wireguard(
     session: &SshSession,
     public_ip: Ipv4Addr,
     interface: &str,
+    user: String,
 ) -> anyhow::Result<SetupResult> {
+    println!("user: {}", user);
+    let sudo = if user == "root" { "" } else { "sudo " };
+
     let (_, status) = run_remote_cmd(session, "which wg").await?;
 
     if status != 0 {
-        let (_, install_status) =
-            run_remote_cmd(session, "sudo apt update && sudo apt install -y wireguard").await?;
+        let apt_cmd = format!(
+            "{}DEBIAN_FRONTEND=noninteractive apt-get update -y && \
+             {}DEBIAN_FRONTEND=noninteractive apt-get install -y -q wireguard",
+            sudo, sudo
+        );
+
+        let (output, install_status) = run_remote_cmd(
+            session,
+            &apt_cmd,
+        )
+        .await?;
+
         if install_status != 0 {
+            println!("Wireguard installation failed: {}", output);
             anyhow::bail!("Wireguard installation failed");
         }
     }
@@ -147,15 +162,18 @@ pub async fn setup_wireguard(
 
     run_remote_cmd(
         session,
-        "sudo mkdir -p /etc/wireguard && sudo chmod 700 /etc/wireguard",
+        &format!(
+            "{} mkdir -p /etc/wireguard && sudo chmod 700 /etc/wireguard",
+            sudo
+        ),
     )
     .await?;
 
     let config_path = Path::new("/etc/wireguard/wg0.conf");
     upload_file(session, config_path, &server_config).await?;
 
-    run_remote_cmd(session, "sudo wg-quick down wg0 || true").await?;
-    run_remote_cmd(session, "sudo wg-quick up wg0").await?;
+    run_remote_cmd(session, &format!("{} wg-quick down wg0 || true", sudo)).await?;
+    run_remote_cmd(session, &format!("{} wg-quick up wg0", sudo)).await?;
 
     save_state(session, &state).await?;
 
