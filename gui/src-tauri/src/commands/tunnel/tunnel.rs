@@ -49,7 +49,6 @@ pub async fn setup_server(
     user: String,
     key_file: String,
 ) -> Result<(), String> {
-    println!("{}|{}|{}", server_ip, user, key_file);
 
     let ip: Ipv4Addr = server_ip
         .parse()
@@ -64,7 +63,7 @@ pub async fn setup_server(
         .await
         .map_err(|e| e.to_string())?;
 
-    let result = setup_wireguard(&session, ip, "eth0".into(), user)
+    let result = setup_wireguard(&session, ip, "eth0".into())
         .await
         .map_err(|e| e.to_string())?;
 

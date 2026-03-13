@@ -20,12 +20,36 @@ impl Handler for ClientHandler {
 
 pub type SshSession = Handle<ClientHandler>;
 
+pub struct SshClient {
+    pub session: SshSession,
+    pub sudo_prefix: String,
+}
+
+impl SshClient {
+    pub fn new(session: SshSession, user: &str) -> Self {
+        let sudo_prefix = if user == "root" { "" } else { "sudo " }.to_string();
+        Self {
+            session,
+            sudo_prefix,
+        }
+    }
+
+    pub async fn exec(&self, cmd: &str) -> anyhow::Result<(String, i32)> {
+        let full_cmd = format!("{}{}", self.sudo_prefix, cmd);
+        run_remote_cmd(&self.session, &full_cmd).await
+    }
+
+    pub async fn exec_raw(&self, cmd: &str) -> anyhow::Result<(String, i32)> {
+        run_remote_cmd(&self.session, cmd).await
+    }
+}
+
 pub async fn connect_ssh(
     addr: Ipv4Addr,
     port: u16,
     user: String,
     key_path: PathBuf,
-) -> std::result::Result<SshSession, SshError> {
+) -> std::result::Result<SshClient, SshError> {
     let config = Config::default();
     let config = Arc::new(config);
     let sh = ClientHandler;
@@ -40,12 +64,15 @@ pub async fn connect_ssh(
     let key_with_alg = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key_pair), None);
 
     let auth_res = session
-        .authenticate_publickey(user, key_with_alg)
+        .authenticate_publickey(user.clone(), key_with_alg)
         .await
         .map_err(|e| SshError::HandshakeFailed(format!("Auth request failed: {}", e)))?;
 
     match auth_res {
-        AuthResult::Success => std::result::Result::Ok(session),
+        AuthResult::Success => {
+            let client = SshClient::new(session, &user);
+            std::result::Result::Ok(client)
+        }
         _ => std::result::Result::Err(SshError::AuthFailed("Access denied".into())),
     }
 }
@@ -80,23 +107,15 @@ pub async fn run_remote_cmd(session: &SshSession, cmd: &str) -> anyhow::Result<(
     Ok((output, exit_code))
 }
 
-pub async fn harden_ssh(session: &SshSession) -> anyhow::Result<()> {
-    println!("disabling password authentication");
+pub async fn harden_ssh(ssh_client: &SshClient) -> anyhow::Result<()> {
+    ssh_client.exec("sed -i 's/^#\\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config").await?;
+    ssh_client.exec("sed -i 's/^#\\?ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config").await?;
 
-    let cmd = r#"
-        sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config && \
-        sudo sed -i 's/^#\?ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config && \
-        (sleep 1 && sudo systemctl restart ssh) > /dev/null 2>&1 &
-        echo "DONE"
-    "#;
-
-    let (output, _) = run_remote_cmd(session, cmd).await?;
-
-    if output.contains("DONE") {
-        println!("SSH now locked to key-only access (restarting in 1s)");
-    } else {
-        println!("SSH command sent, but verify the restart manually");
-    };
+    let restart_cmd = format!(
+        "(sleep 1 && {} systemctl restart ssh) > /dev/null 2>&1 &",
+        ssh_client.sudo_prefix
+    );
+    ssh_client.exec_raw(&restart_cmd).await?;
 
     anyhow::Ok(())
 }

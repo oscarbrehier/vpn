@@ -1,4 +1,4 @@
-use crate::ssh::SshSession;
+use crate::ssh::{SshClient, SshSession};
 use crate::{
     ssh::run_remote_cmd,
     wireguard::{
@@ -99,48 +99,40 @@ AllowedIPs = {allowed_ips}
     )
 }
 
-pub async fn upload_file(session: &SshSession, path: &Path, content: &str) -> anyhow::Result<()> {
+pub async fn upload_file(ssh_client: &SshClient, path: &Path, content: &str) -> anyhow::Result<()> {
     let b64_content = general_purpose::STANDARD.encode(content);
     let cmd = format!(
-        "echo '{}' | base64 -d | sudo tee {}",
+        "echo '{}' | base64 -d | {} tee {} > /dev/null",
         b64_content,
+        ssh_client.sudo_prefix,
         path.display()
     );
 
-    let (output, status) = run_remote_cmd(session, &cmd).await?;
+    let (output, status) = ssh_client.exec_raw(&cmd).await?;
 
     if status != 0 {
         anyhow::bail!("Failed to upload file to {}: {}", path.display(), output);
     }
 
-    run_remote_cmd(session, &format!("sudo chmod 600 {}", path.display())).await?;
+    ssh_client
+        .exec(&format!("chmod 600 {}", path.display()))
+        .await?;
 
     Ok(())
 }
 
 pub async fn setup_wireguard(
-    session: &SshSession,
+    ssh_client: &SshClient,
     public_ip: Ipv4Addr,
     interface: &str,
-    user: String,
 ) -> anyhow::Result<SetupResult> {
-    println!("user: {}", user);
-    let sudo = if user == "root" { "" } else { "sudo " };
-
-    let (_, status) = run_remote_cmd(session, "which wg").await?;
+    let (_, status) = ssh_client.exec_raw("which wg").await?;
 
     if status != 0 {
-        let apt_cmd = format!(
-            "{}DEBIAN_FRONTEND=noninteractive apt-get update -y && \
-             {}DEBIAN_FRONTEND=noninteractive apt-get install -y -q wireguard",
-            sudo, sudo
-        );
+        let apt_cmd = "DEBIAN_FRONTEND=noninteractive apt-get update -y && \
+                   DEBIAN_FRONTEND=noninteractive apt-get install -y -q wireguard iptables";
 
-        let (output, install_status) = run_remote_cmd(
-            session,
-            &apt_cmd,
-        )
-        .await?;
+        let (output, install_status) = ssh_client.exec(apt_cmd).await?;
 
         if install_status != 0 {
             println!("Wireguard installation failed: {}", output);
@@ -160,22 +152,16 @@ pub async fn setup_wireguard(
         new_peer.ip,
     );
 
-    run_remote_cmd(
-        session,
-        &format!(
-            "{} mkdir -p /etc/wireguard && sudo chmod 700 /etc/wireguard",
-            sudo
-        ),
-    )
-    .await?;
+    ssh_client.exec("mkdir -p /etc/wireguard").await?;
+    ssh_client.exec("chmod 700 /etc/wireguard").await?;
 
     let config_path = Path::new("/etc/wireguard/wg0.conf");
-    upload_file(session, config_path, &server_config).await?;
+    upload_file(ssh_client, config_path, &server_config).await?;
 
-    run_remote_cmd(session, &format!("{} wg-quick down wg0 || true", sudo)).await?;
-    run_remote_cmd(session, &format!("{} wg-quick up wg0", sudo)).await?;
+    ssh_client.exec("{} wg-quick down wg0 || true").await?;
+    ssh_client.exec("{} wg-quick up wg0").await?;
 
-    save_state(session, &state).await?;
+    save_state(ssh_client, &state).await?;
 
     Ok(SetupResult {
         client_private_key: peer_priv_key,
@@ -185,36 +171,37 @@ pub async fn setup_wireguard(
     })
 }
 
-pub async fn update_wireguard_config(session: &SshSession, state: &VpnState) -> anyhow::Result<()> {
-    let mut commands: Vec<String> = Vec::new();
-
-    let (current_peers_raw, _) = run_remote_cmd(session, "sudo wg show wg0 peers").await?;
+pub async fn update_wireguard_config(
+    ssh_client: &SshClient,
+    state: &VpnState,
+) -> anyhow::Result<()> {
+    let (current_peers_raw, _) = ssh_client.exec("wg show wg0 peers").await?;
     let active_keys: Vec<&str> = current_peers_raw.lines().collect();
 
     for key in active_keys {
-        if !state.peers.iter().any(|p| p.public_key == key) {
-            commands.push(format!("sudo wg set wg0 peer {} remove", key));
+        if !key.is_empty() && !state.peers.iter().any(|p| p.public_key == key) {
+            ssh_client
+                .exec(&format!("wg set wg0 peer {} remove", key))
+                .await?;
         }
     }
 
     for peer in &state.peers {
-        commands.push(format!(
-            "sudo wg set wg0 peer {} allowed-ips {}/32",
-            peer.public_key, peer.ip
-        ));
+        ssh_client
+            .exec(&format!(
+                "wg set wg0 peer {} allowed-ips {}/32",
+                peer.public_key, peer.ip
+            ))
+            .await?;
     }
 
-    commands.push("sudo wg-quick save wg0".to_string());
-
-    let full_cmd = commands.join(" && ");
-
-    run_remote_cmd(session, &full_cmd).await?;
+    ssh_client.exec("wg-quick save wg0").await?;
 
     anyhow::Ok(())
 }
 
-pub async fn get_server_public_key(session: &SshSession) -> anyhow::Result<String> {
-    let (pub_key, status) = run_remote_cmd(session, "sudo wg show wg0 public-key").await?;
+pub async fn get_server_public_key(ssh_client: &SshClient) -> anyhow::Result<String> {
+    let (pub_key, status) = ssh_client.exec("wg show wg0 public-key").await?;
 
     if status != 0 {
         return Err(ServerError::CommandFailed {
