@@ -12,7 +12,6 @@ import Toolbar from "./components/Toolbar.vue";
 import { startPinging, stopPinging } from "./lib/network";
 import { Loader2, ServerCog } from "lucide-vue-next";
 import NodeSelector from "./components/NodeSelector.vue";
-import TunnelModeToggle from "./components/TunnelModeToggle.vue";
 import AppRouting from "./components/app_routing/AppRouting.vue";
 import SidePanel from "./components/SidePanel.vue";
 
@@ -38,9 +37,9 @@ const availableEndpoints = ref<UnifiedEndpoint[]>([]);
 const activePanel = ref<"nodeSelector" | "appRouting" | null>(null);
 const tunnelMode = ref<TunnelMode>("full");
 
-const setTunnelMode = (newMode: TunnelMode) => {
-	tunnelMode.value = newMode;
-};
+// const setTunnelMode = (newMode: TunnelMode) => {
+// 	tunnelMode.value = newMode;
+// };
 
 async function toggleConnection() {
 

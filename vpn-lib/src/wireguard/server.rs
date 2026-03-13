@@ -160,6 +160,7 @@ pub async fn setup_wireguard(
 
     ssh_client.exec("{} wg-quick down wg0 || true").await?;
     ssh_client.exec("{} wg-quick up wg0").await?;
+    ssh_client.exec("systemctl enable wg-quick@wg0").await?;
 
     save_state(ssh_client, &state).await?;
 

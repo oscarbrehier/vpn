@@ -54,9 +54,6 @@ pub fn run() {
         }
     }
 
-    println!("Current Executable Dir: {:?}", std::env::current_exe());
-    println!("Current Working Dir: {:?}", std::env::current_dir());
-
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
@@ -112,9 +109,22 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            let args: Vec<String> = std::env::args().collect();
+            let should_minimize = args.contains(&"--minimized".to_string());
+
             if let Some(window) = app.get_webview_window("main") {
-                window.show().unwrap();
+                if should_minimize {
+                    window.hide().unwrap();
+                } else {
+                    window.show().unwrap();
+                }
             }
+
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                Some(vec!["--minimized"]),
+            ))?;
 
             Ok(())
         })
@@ -144,18 +154,19 @@ pub fn run() {
         .expect("error while running tauri application")
         .run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { .. } = event {
-
                 let handle = app_handle.clone();
 
                 tauri::async_runtime::block_on(async move {
-
                     let tunnel_state = handle.state::<TunnelState>();
                     let redirection_state = handle.state::<RedirectionState>();
 
-                    let _ = commands::tunnel::stop_tunnel(handle.clone(), tunnel_state, redirection_state).await;
-
+                    let _ = commands::tunnel::stop_tunnel(
+                        handle.clone(),
+                        tunnel_state,
+                        redirection_state,
+                    )
+                    .await;
                 });
-
             }
         });
 }

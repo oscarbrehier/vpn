@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, nextTick } from 'vue';
 import { getConfigurations, startTunnel, TunnelMetadata } from '../lib/tunnel';
-import { invoke } from '@tauri-apps/api/core';
 import { getGeoLocation } from '../lib/geo';
-import { runCommand } from '../lib/tauri';
 
 const props = defineProps(['tunnel', 'isConnected']);
 
@@ -101,12 +99,6 @@ function handleWheel(e: WheelEvent) {
 	transform.y = Math.min(0, Math.max(nextY, minY));
 	transform.scale = newScale;
 
-};
-
-function resetView() {
-	transform.x = 0;
-	transform.y = 0;
-	transform.scale = 1;
 };
 
 function flyToCountry(countryName: string, zoomLevel = 6.5) {
@@ -296,7 +288,7 @@ watch(() => [props.tunnel, props.isConnected], async ([addr, connected]) => {
 
 				<template v-for="p in allMarkers" :key="p.name">
 					<circle class="hover:cursor-default" v-if="p.name !== props.tunnel" :cx="p.x" :cy="p.y"
-						@click="startTunnel(p)" r="3" fill="url(#dot)" />
+						@click="startTunnel(p, 'full')" r="3" fill="url(#dot)" />
 				</template>
 
 				<circle :cx="dotPos.x" :cy="dotPos.y" r="3" :fill="isConnected ? 'url(#dot-on)' : 'url(#dot-off)'" />

@@ -26,9 +26,17 @@
     }
   },
   "bundle": {
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    },
     "active": true,
     "targets": "all",
-    "resources": ["conf/*"],  
+    "resources": ["conf/*"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

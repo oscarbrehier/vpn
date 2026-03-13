@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Upload, X } from 'lucide-vue-next';
 import { ref } from 'vue';

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { LayoutGrid, Minus, X } from 'lucide-vue-next';
+import { Minus, X } from 'lucide-vue-next';
 
 const minimize = async () => await getCurrentWindow().minimize();
 const exit = async () => await getCurrentWindow().close();
 
-const emits = defineEmits<{
-	(e: "open-routing"): void;
-}>();
+// const emits = defineEmits<{
+// 	(e: "open-routing"): void;
+// }>();
 
 </script>
 
