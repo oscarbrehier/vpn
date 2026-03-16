@@ -88,7 +88,7 @@ pub fn build_client_config(
     format!(
         r#"[Interface]
 PrivateKey = {client_priv}
-Address = {peer_ip}/32
+Address = {peer_ip}/24
 DNS = 1.1.1.1
 
 [Peer]
@@ -158,8 +158,18 @@ pub async fn setup_wireguard(
     let config_path = Path::new("/etc/wireguard/wg0.conf");
     upload_file(ssh_client, config_path, &server_config).await?;
 
-    ssh_client.exec("{} wg-quick down wg0 || true").await?;
-    ssh_client.exec("{} wg-quick up wg0").await?;
+    ssh_client.exec("sysctl -w net.ipv4.ip_forward=1").await?;
+    ssh_client
+        .exec("echo 'net.ipv4.ip_forward=1' >> /etc/sysctl.conf || true")
+        .await?;
+
+    ssh_client.exec("wg-quick down wg0 || true").await?;
+   
+    let (output, status) =  ssh_client.exec("wg-quick up wg0").await?;
+    if status != 0 {
+        anyhow::bail!("Failed to start Wireguard: {}", output);
+    }
+
     ssh_client.exec("systemctl enable wg-quick@wg0").await?;
 
     save_state(ssh_client, &state).await?;

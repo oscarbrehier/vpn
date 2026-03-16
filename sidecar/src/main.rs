@@ -16,7 +16,8 @@ enum Commands {
     Start {
         #[arg(short, long)]
         config: PathBuf
-    }
+    },
+    CheckPrivileges
 }
 
 #[derive(Serialize, Deserialize)]
@@ -99,6 +100,11 @@ fn main() {
 
     let response = match cli.command {
         Commands::Start { config } => handle_start(config),
+        Commands::CheckPrivileges => Response { 
+            success: true, 
+            message: format!("Running with elevated priviledges {}", is_elevated()), 
+            data: None 
+        }
     };
 
     send_response(response);

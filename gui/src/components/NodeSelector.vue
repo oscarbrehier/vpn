@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Search, X } from 'lucide-vue-next';
+import { Plus, Search, Trash2, X } from 'lucide-vue-next';
 import { TunnelMetadata, UnifiedEndpoint } from '../lib/tunnel';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import NewConfigurationModal from './NewConfigurationModal.vue';
@@ -14,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(e: 'close'): void;
 	(e: 'connect', config: TunnelMetadata): void;
+	(e: 'delete', config: TunnelMetadata): void;
 	(e: 'refresh'): void;
 }>();
 
@@ -27,9 +28,6 @@ const filteredEndpoints = computed(() => {
 	if (!query.value) return props.endpoints;
 
 	const q = query.value.toLowerCase();
-
-	console.log(q)
-	console.log(props.endpoints)
 
 	return props.endpoints.filter(
 		i => i.config.name.toLowerCase().includes(q)
@@ -52,11 +50,12 @@ function handleOutsideClick(e: MouseEvent) {
 function handleConfigSuccess() {
 	configurrationModal.value = false;
 	emit("refresh");
-}
+};
 
-onMounted(() => {
-	console.log(props.endpoints)
-})
+function handleDelete(e: MouseEvent, config: TunnelMetadata) {
+	e.stopPropagation();
+	emit('delete', config);
+}
 
 watch(() => props.isOpen, (isOpen) => {
 
@@ -83,7 +82,7 @@ onUnmounted(() => {
 
 		<div v-if="isOpen" ref="nodeSelectorRef" class="absolute z-100 w-96 h-full">
 
-			<div class="absolute inset-4">
+			<div class="absolute inset-2">
 
 				<div class="w-full h-full bg-neutral-800 backdrop-blur-sm rounded-lg p-4 border border-neutral-400/10">
 
@@ -102,7 +101,7 @@ onUnmounted(() => {
 
 					</div>
 
-					<div class="w-full flex items-center justify-between space-x-2 mt-6">
+					<div class="w-full flex items-center justify-between space-x-2">
 
 						<div class="h-10 flex-1 rounded-md bg-neutral-700/40 flex items-center px-4 space-x-4">
 							<Search class="text-neutral-400" :size="20" />
@@ -124,14 +123,17 @@ onUnmounted(() => {
 								@click="emit('connect', endpoint.config)"
 								:style="{ transitionDelay: `${index * 50}ms` }"
 								:disabled="activeTunnel === endpoint.config.public_ip"
-								class="w-full flex items-center justify-between group p-3 rounded-md mb-2 transition-all border"
+								class="w-full flex items-center justify-between group rounded-md mb-2 transition-all relative"
 								:class="activeTunnel === endpoint.config.name
+									? 'cursor-default'
+									: 'cursor-pointer'">
+								<!-- :class="activeTunnel === endpoint.config.name
 									? 'bg-accent-500/20 border-accent-500/30 cursor-default'
-									: 'bg-neutral-700/40 hover:bg-neutral-700/80 border-transparent cursor-pointer'">
+									: 'bg-neutral-700/40 hover:bg-neutral-700/80 border-transparent cursor-pointer'"> -->
 
 								<div class="flex items-center gap-x-4">
 
-									<div class="w-10 rounded-sm overflow-hidden border border-white/5">
+									<div class="w-11 rounded-sm overflow-hidden border border-white/5">
 										<img :src="`https://flagcdn.com/h80/${endpoint.geo.country_code.toLowerCase()}.webp`"
 											class="w-full h-full object-cover" />
 									</div>
@@ -151,6 +153,13 @@ onUnmounted(() => {
 										class="size-2 rounded-full bg-accent-500 shadow-[0_0_8px_var(--color-accent-500)] animate-pulse" />
 
 								</div>
+
+								<button @click="handleDelete($event, endpoint.config)"
+									class="size-6 rounded bg-red-500/50 border border-red-700 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-brand-600 flex items-center justify-center"
+									:class="{ 'hidden': activeTunnel === endpoint.config.name }"
+									title="Delete configuration">
+									<Trash2 :size="14" class="text-white" />
+								</button>
 
 							</button>
 

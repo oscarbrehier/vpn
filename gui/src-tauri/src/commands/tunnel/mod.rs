@@ -1,6 +1,6 @@
 pub mod metadata;
 pub mod tunnel;
-// pub mod apps;
+pub mod configs;
 
 use tokio::sync::{Mutex, mpsc};
 pub use tunnel::*;

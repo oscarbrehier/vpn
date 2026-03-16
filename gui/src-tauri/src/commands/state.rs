@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::sleep;
 
 use crate::{
-    commands::tunnel::{get_configs, is_tunnel_active, metadata::get_all_tunnels},
+    commands::tunnel::{is_tunnel_active, metadata::get_all_tunnels},
     TunnelPayload, TunnelState,
 };
 

@@ -142,7 +142,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::tunnel::setup_server,
             commands::tunnel::toggle_vpn,
-            commands::tunnel::get_configs,
             commands::tunnel::start_tunnel,
             commands::tunnel::stop_tunnel,
             commands::tunnel::quick_connect,
@@ -150,7 +149,9 @@ pub fn run() {
             commands::state::get_current_tunnel_status,
             commands::geo::get_geo_info,
             commands::pinger::start_ping_loop,
-            commands::pinger::stop_ping_loop
+            commands::pinger::stop_ping_loop,
+            commands::tunnel::configs::get_configs,
+            commands::tunnel::configs::remove_config,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

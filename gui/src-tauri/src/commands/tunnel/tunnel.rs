@@ -1,33 +1,30 @@
-use std::{
-    fs,
-    net::Ipv4Addr,
-    path::{PathBuf},
-    str::FromStr,
-};
+use std::{fs, net::Ipv4Addr, path::PathBuf, str::FromStr};
 
-use vpn_lib::utils::create_command;
 use secrecy::ExposeSecret;
-use serde::{Serialize};
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_store::StoreExt;
-use tokio::{time::timeout};
+use tokio::time::timeout;
+use vpn_lib::utils::create_command;
 use vpn_lib::{
     self,
     network::ping_endpoint,
     ssh::{connect_ssh, harden_ssh},
     validate_key_file,
-    wireguard::{
-        server::{build_client_config, setup_wireguard, TunnelMode},
-    },
+    wireguard::server::{build_client_config, setup_wireguard, TunnelMode},
 };
 
+use crate::commands::tunnel::metadata::get_store_path;
 use crate::{
-    TunnelPayload, TunnelState, commands::{
+    commands::{
         tunnel::{
-            RedirectionState, metadata::{TunnelMetadata, get_all_tunnels, save_metadata_to_store}
+            metadata::{get_all_tunnels, save_metadata_to_store, TunnelMetadata},
+            RedirectionState,
         },
         utils::{load_key_securely, save_key_securely},
-    }, sidecar_bridge::run_sidecar_command
+    },
+    sidecar_bridge::run_sidecar_command,
+    TunnelPayload, TunnelState,
 };
 
 #[derive(Serialize)]
@@ -45,7 +42,6 @@ pub async fn setup_server(
     user: String,
     key_file: String,
 ) -> Result<(), String> {
-
     let ip: Ipv4Addr = server_ip
         .parse()
         .map_err(|_| "Invalid IP address format".to_string())?;
@@ -86,7 +82,6 @@ pub async fn toggle_vpn(connect: bool) -> Result<bool, String> {
 
     #[cfg(target_os = "windows")]
     {
-
         cmd = create_command("wg-quick");
         cmd.arg(action).arg(interface);
     }
@@ -112,19 +107,11 @@ pub async fn toggle_vpn(connect: bool) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub async fn get_configs(app: AppHandle) -> Result<Vec<TunnelMetadata>, String> {
-    let tunnels = get_all_tunnels(&app)?;
-    Ok(tunnels)
-}
-
-#[tauri::command]
 pub fn is_tunnel_active(name: String) -> bool {
     #[cfg(target_os = "windows")]
     {
         let service_name = format!("WireGuardTunnel${}", name);
-        let output = create_command("sc")
-            .args(["query", &service_name])
-            .output();
+        let output = create_command("sc").args(["query", &service_name]).output();
 
         match output {
             Ok(out) => {
@@ -136,9 +123,7 @@ pub fn is_tunnel_active(name: String) -> bool {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let output = create_command("wg")
-            .args(["show", &name])
-            .output();
+        let output = create_command("wg").args(["show", &name]).output();
         output.map(|o| o.status.success()).unwrap_or(false)
     }
 }
@@ -151,8 +136,10 @@ pub async fn start_tunnel(
     public_ip: Ipv4Addr,
     tunnel_mode: TunnelMode,
 ) -> Result<(), String> {
+    let store_path = get_store_path(&app)?;
+
     let store = app
-        .store("tunnels.json")
+        .store(store_path)
         .map_err(|e| format!("Failed to open store: {}", e))?;
 
     let public_ip_str = public_ip.to_string();
@@ -185,7 +172,15 @@ pub async fn start_tunnel(
 
     // vpn_lib::wireguard::client::start_tunnel(&config_path).map_err(|e| e.to_string())?;
 
-    let response = run_sidecar_command(app.clone(), vec!["start", "--config", &config_path.to_string_lossy().to_string()]).await?;
+    let response = run_sidecar_command(
+        app.clone(),
+        vec![
+            "start",
+            "--config",
+            &config_path.to_string_lossy().to_string(),
+        ],
+    )
+    .await?;
 
     if !response.success {
         return Err(response.message);

@@ -5,7 +5,7 @@ import Map from "./components/Map.vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getGeoLocation } from "./lib/geo";
 import { listen } from "@tauri-apps/api/event";
-import { getAvailableEndpoints, getTunnelStatus, quickConnect, startTunnel, stopTunnel, TunnelMetadata, TunnelMode, TunnelPayload, UnifiedEndpoint } from "./lib/tunnel";
+import { getAvailableEndpoints, getTunnelStatus, quickConnect, removeConfiguration, startTunnel, stopTunnel, TunnelMetadata, TunnelMode, TunnelPayload, UnifiedEndpoint } from "./lib/tunnel";
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css'
 import Toolbar from "./components/Toolbar.vue";
@@ -154,6 +154,16 @@ function toggleAppRoutingPanel() {
 	activePanel.value = activePanel.value === "appRouting" ? null : "appRouting";
 };
 
+async function deleteConfig(config: TunnelMetadata) {
+
+	const deleted = await removeConfiguration(config);
+
+	if (deleted) {
+		await refreshEndpoints();
+	};
+
+};
+
 </script>
 
 <template>
@@ -230,7 +240,8 @@ function toggleAppRoutingPanel() {
 		</SidePanel>
 
 		<NodeSelector :isOpen="serverSelection" :endpoints="availableEndpoints" :activeTunnel="activeTunnel"
-			:isPending="isPending" @close="serverSelection = false" @connect="connectTo" @refresh="refreshEndpoints" />
+			:isPending="isPending" @close="serverSelection = false" @connect="connectTo" @refresh="refreshEndpoints"
+			@delete="deleteConfig" />
 
 		<Toolbar @open-routing="toggleAppRoutingPanel" />
 

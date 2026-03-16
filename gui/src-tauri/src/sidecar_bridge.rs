@@ -10,6 +10,8 @@ pub struct SidecarResponse {
 
 pub async fn run_sidecar_command(app: tauri::AppHandle, args: Vec<&str>) -> Result<SidecarResponse, String> {
 
+ eprintln!("🔧 Calling sidecar with args: {:?}", args);
+
 	let sidecar_command = app.shell().sidecar("sidecar").map_err(|e| format!("Failed to create sidecar command: {}", e))?;
 
 	let (mut rx, _child) = sidecar_command.args(args).spawn().map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
@@ -31,6 +33,8 @@ pub async fn run_sidecar_command(app: tauri::AppHandle, args: Vec<&str>) -> Resu
 			_ => {}
 		}
 	}
+
+	  eprintln!("📊 Final stdout: '{}'", output);
 
 	serde_json::from_str(&output).map_err(|e| format!("Failed to parse sidecar response: {}\n output: {}\n", e, output))
 

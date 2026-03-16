@@ -1,4 +1,4 @@
-use std::net::Ipv4Addr;
+use std::{net::Ipv4Addr, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -24,10 +24,15 @@ impl From<SetupResult> for TunnelMetadata {
     }
 }
 
-pub fn save_metadata_to_store(app: &AppHandle, data: TunnelMetadata) -> Result<(), String> {
+pub fn get_store_path(app: &AppHandle) -> Result<PathBuf, String> {
     let data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     let store_path = data_dir.join("tunnels.json");
 
+    Ok(store_path)
+}
+
+pub fn save_metadata_to_store(app: &AppHandle, data: TunnelMetadata) -> Result<(), String> {
+    let store_path = get_store_path(&app)?;
     let store = app.store(store_path).map_err(|e| e.to_string())?;
 
     store.set(
@@ -40,11 +45,24 @@ pub fn save_metadata_to_store(app: &AppHandle, data: TunnelMetadata) -> Result<(
     Ok(())
 }
 
-pub fn get_all_tunnels(app: &AppHandle) -> Result<Vec<TunnelMetadata>, String> {
-    let data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
-    let store_path = data_dir.join("tunnels.json");
-
+pub fn remove_metadata_from_store(app: &AppHandle, key: String) -> Result<(), String> {
+    let store_path = get_store_path(&app)?;
     let store = app.store(store_path).map_err(|e| e.to_string())?;
+
+    let deleted = store.delete(key.clone());
+    if !deleted {
+        return Err(format!("Key '{}' not found in store", key));
+    }
+
+    store.save().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+pub fn get_all_tunnels(app: &AppHandle) -> Result<Vec<TunnelMetadata>, String> {
+    let store_path = get_store_path(&app)?;
+    let store = app.store(store_path).map_err(|e| e.to_string())?;
+
     let mut tunnels = Vec::new();
 
     for (_key, value) in store.entries() {

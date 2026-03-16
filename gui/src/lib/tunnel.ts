@@ -47,6 +47,16 @@ export async function getConfigurations(): Promise<TunnelMetadata[]> {
 
 };
 
+export async function removeConfiguration(metadata: TunnelMetadata): Promise<Boolean> {
+
+	const { error } = await runCommand("remove_config", true, {
+		key: metadata.public_ip
+	});
+
+	return !error;
+
+};
+
 export async function startTunnel(conf: TunnelMetadata, mode: TunnelMode) {
 	await runCommand("start_tunnel", true, {
 		publicIp: conf.public_ip,
@@ -79,11 +89,11 @@ export async function getTunnelStatus() {
 export async function getAvailableEndpoints(): Promise<UnifiedEndpoint[]> {
 
 	const { data: confs, error } = await runCommand<TunnelMetadata[]>("get_configs", true);
-	
+
 	if (error || !confs) return [];
 
 	const locationsPromises = (confs as TunnelMetadata[]).map(async (conf) => {
- 
+
 		const ip = conf.public_ip;
 		const res = await getGeoLocation(ip);
 
